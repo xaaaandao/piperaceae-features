@@ -67,7 +67,7 @@ function [color, height, width, level, minimum_image, input_path, output_path] =
 end
 
 
-function [extractor, n_features, total_samples] = extract_features(, path_in, path_out)
+function [extractor, n_features, total_samples] = extract_features(path_in, path_out)
     labels=[];
     inputs=[];
     list_dir = dir(path_in);
