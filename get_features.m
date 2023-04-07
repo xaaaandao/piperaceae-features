@@ -36,7 +36,7 @@ function a(color_mode, dataset, image_size, l, min_image, path_base)
         end
     else
         path_in = fullfile(path_base, dataset, color_mode, l, image_size, min_image);
-        path_out = fullfile(path_base, strcat(dataset, "_features"), color_mode, l, image_size, min_image);
+        path_out = fullfile(path_base, strcat(dataset, "_features"), color_mode, image_size, l, min_image);
         if ~exist(path_out, 'dir')
             mkdir(path_out)
         end
