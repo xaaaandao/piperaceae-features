@@ -1,0 +1,178 @@
+function get_features()
+    path_base = "/home/xandao/Imagens";
+    colors = ["GRAYSCALE"];
+    datasets = ["pr_dataset"];%, "br_dataset", "regions_dataset"];
+    image_sizes = ["256"];%, "400", "512"];
+    levels = ["specific_epithet_trusted"];
+    minimum_images = ["20"];%, "10", "5"];
+    for dataset=datasets
+        for color=colors
+            for level=levels
+                for image_size=image_sizes
+                    for minimum_image=minimum_images
+                        a(color, dataset, image_size, level, minimum_image, path_base);
+                    end
+                end
+            end            
+        end
+    end
+end
+
+function a(c, dataset, image_size, l, min_image, path_base)
+    list_f = [];    
+    list_filename = [];
+    list_input = [];
+    if dataset=="regions_dataset"
+        regions = ["Norte", "Nordeste", "Centro-Oeste", "Sul", "Sudeste"];
+        for r=regions
+            path_in = fullfile(path_base, dataset, c, l, r, image_size, min_image);
+            path_out = fullfile(path_base, strcat(dataset, "_features"), c, l, r, image_size, min_image);
+            if ~exist(path_out, 'dir')
+                mkdir(path_out)
+            end
+            delete_files(path_out);
+            [extractor, n_features, total_samples] = extract_features(list_f, list_filename, list_input, path_in, path_out);
+            region=[r;r;r];
+            [color, height, width, level, minimum_image, input_path, output_path] = informations(c, image_size, image_size, l, min_image, path_in, path_out);
+            T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, region);
+            save_table_info(path_out, T);
+        end
+    else
+        path_in = fullfile(path_base, dataset, c, l, image_size, min_image);
+        path_out = fullfile(path_base, strcat(dataset, "_features"), c, l, image_size, min_image);
+        if ~exist(path_out, 'dir')
+            mkdir(path_out)
+        end
+        delete_files(path_out);
+        [extractor, n_features, total_samples] = extract_features(list_f, list_filename, list_input, path_in, path_out);
+        [color, height, width, level, minimum_image, input_path, output_path] = informations(c, image_size, image_size, l, min_image, path_in, path_out);
+        T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path);
+        save_table_info(path_out, T);
+    end
+end
+
+function save_table_info(path_out, T)
+    filename = fullfile(path_out, 'info.csv');
+    fprintf("%s created\n", string(filename));
+    writetable(T, filename);
+end
+
+
+function [color, height, width, level, minimum_image, input_path, output_path] = informations(c, h, w, l, m, in, out)
+    color = [c;c;c];
+    height = [h;h;h];
+    width = [w;w;w];
+    level = [l;l;l];
+    minimum_image = [m;m;m];
+    input_path = [in;in;in];
+    output_path = [out;out;out];
+end
+
+function [extractor, n_features, total_samples] = extract_features(label, list_filename, inputs, path_in, path_out)
+    label
+    list_dir = dir(path_in);
+    folders = list_dir([list_dir.isdir]); % A structure with extra info.        
+    folders_name = folders(3:end);
+    total_samples = 0;
+    for i=1:height(folders_name)
+        path_folder = fullfile(folders_name(i).folder, folders_name(i).name);
+        list_images = dir(path_folder);
+        for j=1:height(list_images)
+            path_to_image =  fullfile(list_images(j).folder, list_images(j).name);
+            if contains(path_to_image, "jpeg", "IgnoreCase", true)
+                fprintf("image: %s\n", path_to_image);
+                img = imread(path_to_image);
+                label = [label;string(i)];
+                inputs = [inputs;string(path_to_image)];                
+
+                feature = lbp(img);
+                filename_lbp = fullfile(path_out, "lbp.txt");
+                fileout(filename_lbp, feature, string(i));
+                n_features_lbp = string(length(feature));
+
+                feature = surf(img, 64);
+                filename_surf = fullfile(path_out, "surf64.txt");
+                fileout(filename_surf, feature, string(i));
+                n_features_surf64 = string(length(feature));
+
+                feature = surf(img, 128);
+                filename_surf = fullfile(path_out, "surf128.txt");
+                fileout(filename_surf, feature, string(i));
+                n_features_surf128 = string(length(feature));
+
+                total_samples = total_samples + 1;
+            end
+        end
+    end 
+    extractor=["lbp"; "surf64"; "surf128"];
+    n_features=[n_features_lbp; n_features_surf64; n_features_surf128];
+    total_samples=[string(total_samples); string(total_samples); string(total_samples)];
+
+    T = table(label, inputs);
+    filename = fullfile(path_out, 'info_samples.csv');
+    fprintf("%s created\n", string(filename));
+    writetable(T, filename);
+end
+
+function [sort_list_by_name] = sort_by_name(list)
+    list = [list(3:length(list))];    
+    list = struct2table(list);
+    sort_list_by_name = sortrows(list, "name");
+end
+
+
+function delete_files(path)
+    for fname=["surf.txt", "surf128.txt", "lbp.txt"]
+        fprintf("delete file %s\n", string(fullfile(path, fname)));
+        delete(fullfile(path, fname));
+    end
+end
+
+
+function fileout(filename, feature, label)    
+    file = fopen(filename, "a");
+    for i=1:length(feature)
+        fprintf(file, "%s ", num2str(feature(i)));
+    end
+    fprintf(file, "%s \n", label);
+    fclose(file);
+end
+
+
+function feature = lbp(image)
+    lbpFeatures = extractLBPFeatures(image);
+    numNeighbors = 8;
+    numBins = numNeighbors*(numNeighbors-1)+3;
+    lbpCellHists = reshape(lbpFeatures, numBins, []);
+    feature = reshape(lbpCellHists, 1, []);
+end
+
+
+function [featVector] = surf(I, SURFSize)
+
+    points = detectSURFFeatures( I );
+    [histograma, valid_points] = extractFeatures(I, points, "SURFSize", SURFSize); 
+
+
+    % escreve QTDE. DESCRITORES na tela
+    vHist =  size(histograma, 1);
+
+    % media
+    vetorAux = mean(histograma, 1);
+    media =  vetorAux(1:size(vetorAux, 2));
+
+    % desvio padrao
+    vetorAux = std(histograma, 0, 1);
+    desvPad =  vetorAux(1:size(vetorAux, 2));
+
+    % Obliquidade
+    vetorAux = skewness(histograma, 0, 1);
+    obliq =  vetorAux(1:size(vetorAux, 2));
+
+    % Curtose
+    vetorAux = kurtosis(histograma, 0, 1);
+    curt = vetorAux(1:size(vetorAux, 2));
+
+    featVector = [vHist, media, desvPad, obliq, curt] ;
+
+end
