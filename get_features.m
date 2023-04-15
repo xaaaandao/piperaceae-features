@@ -1,7 +1,7 @@
 function get_features()
     path_base = "/home/xandao/Imagens";
     colors = ["GRAYSCALE"];
-    datasets = ["pr_dataset", "br_dataset", "regions_dataset"];
+    datasets = ["regions_dataset"];
     image_sizes = ["256", "400", "512"];
     levels = ["specific_epithet_trusted"];
     minimum_images = ["20", "10", "5"];
@@ -18,32 +18,32 @@ function get_features()
     end
 end
 
-function a(color_mode, dataset, image_size, l, min_image, path_base)
-    if dataset=="regions_dataset"
+function a(color_mode, d, image_size, l, min_image, path_base)
+    if d=="regions_dataset"
         regions = ["Norte", "Nordeste", "Centro-Oeste", "Sul", "Sudeste"];
         for r=regions
-            path_in = fullfile(path_base, dataset, color_mode, l, r, image_size, min_image);
-            path_out = fullfile(path_base, strcat(dataset, "_features"), color_mode, l, r, image_size, min_image);
+            path_in = fullfile(path_base, d, color_mode, l, r, image_size, min_image);
+            path_out = fullfile(path_base, strcat(d, "_features"), color_mode, l, r, image_size, min_image);
             if ~exist(path_out, 'dir')
                 mkdir(path_out)
             end
             delete_files(path_out);
             [extractor, n_features, total_samples] = extract_features(path_in, path_out);
             region=[r;r;r];
-            [color, height, width, level, minimum_image, input_path, output_path] = informations(color_mode, image_size, image_size, l, min_image, path_in, path_out);
-            T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, region);
+            [color, dataset, height, width, level, minimum_image, input_path, output_path] = informations(color_mode, d, image_size, image_size, l, min_image, path_in, path_out);
+            T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, region, dataset);
             save_table_info(path_out, T);
         end
     else
-        path_in = fullfile(path_base, dataset, color_mode, l, image_size, min_image);
-        path_out = fullfile(path_base, strcat(dataset, "_features"), color_mode, image_size, l, min_image);
+        path_in = fullfile(path_base, d, color_mode, l, image_size, min_image);
+        path_out = fullfile(path_base, strcat(d, "_features"), color_mode, image_size, l, min_image);
         if ~exist(path_out, 'dir')
             mkdir(path_out)
         end
         delete_files(path_out);
         [extractor, n_features, total_samples] = extract_features(path_in, path_out);
-        [color, height, width, level, minimum_image, input_path, output_path] = informations(color_mode, image_size, image_size, l, min_image, path_in, path_out);
-        T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path);
+        [color, dataset, height, width, level, minimum_image, input_path, output_path] = informations(color_mode, d, image_size, image_size, l, min_image, path_in, path_out);
+        T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, datase);
         save_table_info(path_out, T);
     end
 end
@@ -56,8 +56,9 @@ function save_table_info(path_out, T)
 end
 
 
-function [color, height, width, level, minimum_image, input_path, output_path] = informations(c, h, w, l, m, in, out)
+function [color, dataset, height, width, level, minimum_image, input_path, output_path] = informations(c, d, h, w, l, m, in, out)
     color = [c;c;c];
+    dataset = [d;d;d];
     height = [h;h;h];
     width = [w;w;w];
     level = [l;l;l];

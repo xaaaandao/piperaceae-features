@@ -141,7 +141,7 @@ def main():
     list_size = ['256', '400', '512']
     list_minimum_image = ['20', '10', '5']
     list_cnn = ['vgg16', 'resnet50v2', 'mobilenetv2']
-    list_dataset = ['pr_dataset', 'br_dataset', 'region_dataset']
+    list_dataset = ['pr_dataset', 'br_dataset', 'regions_dataset']
     list_level = ['specific_epithet_trusted']
     list_region = ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']
     for cnn in list_cnn:
@@ -152,7 +152,7 @@ def main():
                         for dataset in list_dataset:
                             print('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
                                   % (cnn, color, dataset, image_size, level, minimum_image))
-                            if 'region_dataset' == dataset:
+                            if 'regions_dataset' == dataset:
                                 for region in list_region:
                                     path = os.path.join(PATHBASE, dataset, color, level, region, image_size,
                                                         minimum_image)
