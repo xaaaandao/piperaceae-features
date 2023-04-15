@@ -43,7 +43,7 @@ function a(color_mode, d, image_size, l, min_image, path_base)
         delete_files(path_out);
         [extractor, n_features, total_samples] = extract_features(path_in, path_out);
         [color, dataset, height, width, level, minimum_image, input_path, output_path] = informations(color_mode, d, image_size, image_size, l, min_image, path_in, path_out);
-        T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, datase);
+        T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, dataset);
         save_table_info(path_out, T);
     end
 end
