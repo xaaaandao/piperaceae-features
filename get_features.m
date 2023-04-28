@@ -1,10 +1,10 @@
 function get_features()
     path_base = "/home/xandao/Imagens";
     colors = ["GRAYSCALE"];
-    datasets = ["regions_dataset"];
-    image_sizes = ["256", "400", "512"];
+    datasets = ["br_dataset"];
+    image_sizes = ["256", "400"];
     levels = ["specific_epithet_trusted"];
-    minimum_images = ["20", "10", "5"];
+    minimum_images = ["5"];
     for dataset=datasets
         for color=colors
             for level=levels
@@ -42,9 +42,9 @@ function a(color_mode, d, image_size, l, min_image, path_base)
         end
         delete_files(path_out);
         [extractor, n_features, total_samples] = extract_features(path_in, path_out);
-        [color, dataset, height, width, level, minimum_image, input_path, output_path] = informations(color_mode, d, image_size, image_size, l, min_image, path_in, path_out);
-        T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, dataset);
-        save_table_info(path_out, T);
+%         [color, dataset, height, width, level, minimum_image, input_path, output_path] = informations(color_mode, d, image_size, image_size, l, min_image, path_in, path_out);
+%         T = table(extractor, n_features, total_samples, color, height, width, level, minimum_image, input_path, output_path, dataset);
+%         save_table_info(path_out, T);
     end
 end
 
@@ -81,24 +81,26 @@ function [extractor, n_features, total_samples] = extract_features(path_in, path
         for j=1:height(list_images)
             path_to_image =  fullfile(list_images(j).folder, list_images(j).name);
             if contains(path_to_image, "jpeg", "IgnoreCase", true)
-                fprintf("image: %s\n", path_to_image);
+%                 fprintf("path: %s j: %d total: %d\n", path_folder, path_to_image, height(list_images));
                 img = imread(path_to_image);
+%                 img = histeq(img, [0 1]);
+%                 img = imbinarize(img);
                 labels = [labels;string(i)];
                 inputs = [inputs;string(path_to_image)];                
 
-                feature = lbp(img);
-                filename_lbp = fullfile(path_out, "lbp.txt");
-                fileout(filename_lbp, feature, string(i));
-                n_features_lbp = string(length(feature));
-
-                feature = surf(img, 64);
+%                 feature = lbp(img);
+%                 filename_lbp = fullfile(path_out, "lbp.txt");
+%                 fileout(filename_lbp, feature, string(i));
+%                 n_features_lbp = string(length(feature));
+                
+                feature = surf(img, path_to_image, 64);
                 filename_surf = fullfile(path_out, "surf64.txt");
                 fileout(filename_surf, feature, string(i));
                 n_features_surf64 = string(length(feature));
 
-                feature = surf(img, 128);
-                filename_surf = fullfile(path_out, "surf128.txt");
-                fileout(filename_surf, feature, string(i));
+%                 feature = surf(img, path_to_image, 128);
+%                 filename_surf = fullfile(path_out, "surf128.txt");
+%                 fileout(filename_surf, feature, string(i));
                 n_features_surf128 = string(length(feature));
 
                 total_samples = total_samples + 1;
@@ -108,11 +110,11 @@ function [extractor, n_features, total_samples] = extract_features(path_in, path
     extractor=["lbp"; "surf64"; "surf128"];
     n_features=[n_features_lbp; n_features_surf64; n_features_surf128];
     total_samples=[string(total_samples); string(total_samples); string(total_samples)];
-
-    T = table(labels, inputs);
-    filename = fullfile(path_out, 'info_samples.csv');
-    fprintf("%s created\n", string(filename));
-    writetable(T, filename);
+% 
+%     T = table(labels, inputs);
+%     filename = fullfile(path_out, 'info_samples.csv');
+%     fprintf("%s created\n", string(filename));
+%     writetable(T, filename);
 end
 
 
@@ -143,19 +145,21 @@ function feature = lbp(image)
 end
 
 
-function [featVector] = surf(I, SURFSize)
+function [featVector] = surf(I, fname, SURFSize)
+
+    %I = single( I );		
 
     points = detectSURFFeatures( I );
-    [histograma, valid_points] = extractFeatures(I, points, "SURFSize", SURFSize); 
-
-
+    [histograma, valid_points] = extractFeatures(I, points, 'SURFSize', SURFSize); 
+    
+                            
     % escreve QTDE. DESCRITORES na tela
     vHist =  size(histograma, 1);
-
+    
     % media
     vetorAux = mean(histograma, 1);
     media =  vetorAux(1:size(vetorAux, 2));
-
+    
     % desvio padrao
     vetorAux = std(histograma, 0, 1);
     desvPad =  vetorAux(1:size(vetorAux, 2));
@@ -163,11 +167,16 @@ function [featVector] = surf(I, SURFSize)
     % Obliquidade
     vetorAux = skewness(histograma, 0, 1);
     obliq =  vetorAux(1:size(vetorAux, 2));
+    if anynan(obliq) == 1
+        fprintf("%s\n", fname);
+    end
 
     % Curtose
     vetorAux = kurtosis(histograma, 0, 1);
     curt = vetorAux(1:size(vetorAux, 2));
+    if anynan(curt) == 1
+         fprintf("%s\n", fname);
+    end   
 
-    featVector = [vHist, media, desvPad, obliq, curt] ;
-
+    featVector = [vHist, media, desvPad, obliq, curt];
 end

@@ -7,6 +7,9 @@ import pathlib
 import pandas as pd
 import tensorflow as tf
 
+
+from PIL import Image, ImageEnhance
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 PATHBASE = '/home/xandao/Imagens'
@@ -30,6 +33,14 @@ def get_model(model, **kwargs):
 
     raise ValueError
 
+
+def adjust_contrast(image):
+    #image brightness enhancer
+    enhancer = ImageEnhance.Contrast(image)
+            
+    factor = 1.5 #decrease constrast
+    image = enhancer.enhance(factor)
+    return image
 
 
 def extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, level, minimum_image, output_path, patches, region):
@@ -57,6 +68,7 @@ def extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, 
             for fname in sorted(glob.glob(input_path_proto % (fold))):
                 print('fname: %s' % fname)
                 img = tf.keras.preprocessing.image.load_img(fname)
+                img = adjust_contrast(img)     
                 spec = tf.keras.preprocessing.image.img_to_array(img)
                 for p in next_patch(spec, n_patches):
                     p = preprocess_input(p)
@@ -68,9 +80,10 @@ def extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, 
             save_file('npy', features, fold, n_patches, output_path)
             save_file('npz', features, fold, n_patches, output_path)
             n_samples, n_features = features.shape
+            for i, img in enumerate(imgs_sliced):
+                tf.keras.preprocessing.image.save_img(f'{i}.png', img)
             total_samples+=n_samples
-        print(total_samples)
-        save_information(color, cnn, dataset, image_size, input_path, level, minimum_image, n_features, output_path, n_patches, region, total_samples)
+        # save_information(color, cnn, dataset, image_size, input_path, level, minimum_image, n_features, output_path, n_patches, region, total_samples)
 
 
 def save_file(extension, features, fold, n_patches, output_path):
@@ -141,7 +154,7 @@ def main():
     list_size = ['256', '400', '512']
     list_minimum_image = ['20', '10', '5']
     list_cnn = ['vgg16', 'resnet50v2', 'mobilenetv2']
-    list_dataset = ['pr_dataset', 'br_dataset', 'regions_dataset']
+    list_dataset = ['pr_dataset']
     list_level = ['specific_epithet_trusted']
     list_region = ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']
     for cnn in list_cnn:
@@ -160,6 +173,8 @@ def main():
                             else:
                                 path = os.path.join(PATHBASE, dataset, color, level, image_size, minimum_image)
                                 prepare(cnn, color, dataset, image_size, level, minimum_image, path)
+                                
+
 
 
 if __name__ == '__main__':
