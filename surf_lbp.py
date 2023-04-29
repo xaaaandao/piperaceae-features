@@ -96,7 +96,7 @@ def extract_features(dataset, extractor, path):
             f, n_features = extractor(**params)
             features.append(f)
 
-    path_final = path.replace(dataset, '%s_features' % dataset)
+    path_final = path.replace(dataset, '%s_features_CONTRAST_%s' % (dataset, CONTRAST))
 
     if not os.path.exists(path_final):
         os.makedirs(path_final)
