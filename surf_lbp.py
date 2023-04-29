@@ -9,7 +9,7 @@ import scipy.stats
 from PIL import Image, ImageEnhance
 from skimage.feature import local_binary_pattern
 
-CONTRAST=1.2
+CONTRAST=1.8
 
 
 def lbp(**kwargs):
@@ -19,13 +19,16 @@ def lbp(**kwargs):
     radius = 1
     n_points = 8 * radius
 
-    n_bins = n_neighbors * (n_neighbors - 1) + 3
-    lbp = local_binary_pattern(image, n_points, radius)
+    n_bins = n_neighbors * (n_neighbors + 3)
+    lbp = local_binary_pattern(image, n_points, radius, method='uniform')
 
-    hist, _ = np.histogram(lbp.ravel(), density=True, bins=n_bins, range=(0, n_bins))
+    hist, _ = np.histogram(lbp.ravel(), bins=n_bins, range=(0, n_bins))
 
     label = np.array([label], dtype=int)
     features = np.append(hist, label)
+
+    hist = hist.astype('float')
+    hist /= (hist.sum() + 1e-6)
 
     return features, features.shape[0] - 1
 
@@ -34,22 +37,22 @@ def surf(**kwargs):
     image = kwargs['image']
     label = kwargs['label']
 
-    surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000, nOctaves=5, nOctaveLayers=3)
+    surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000)
     kp, histograma = surf.detectAndCompute(image, None)
 
     v_hist = histograma.shape[0]
 
     vetor_aux = np.mean(histograma, axis=0)
-    mean = vetor_aux[0:vetor_aux.shape[0]]
+    mean = vetor_aux[0:vetor_aux.shape[1]]
 
     vetor_aux = np.std(histograma, axis=0)
-    desv_pad = vetor_aux[0:vetor_aux.shape[0]]
+    desv_pad = vetor_aux[0:vetor_aux.shape[1]]
 
     vetor_aux = scipy.stats.kurtosis(histograma, bias=False, axis=0)
-    kurtosis = vetor_aux[0:vetor_aux.shape[0]]
+    kurtosis = vetor_aux[0:vetor_aux.shape[1]]
 
     vetor_aux = scipy.stats.skew(histograma, bias=False, axis=0)
-    skew = vetor_aux[0:vetor_aux.shape[0]]
+    skew = vetor_aux[0:vetor_aux.shape[1]]
 
     v_hist = np.array([v_hist], dtype=int)
     label = np.array([label], dtype=int)
@@ -78,7 +81,6 @@ def extract_features(dataset, extractor, path):
     n_features = 0
     total_samples = 0
     for d in list_dirs:
-        # print('d: %s' % d)
         list_images = list(sorted(pathlib.Path(d).glob('*.jpeg')))
         total_samples += len(list_images)
 
@@ -122,7 +124,7 @@ def create_df_info(data, path, region=None):
     df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
 
 
-for dataset in ['pr_dataset', 'regions_dataset']:
+for dataset in ['br_dataset', 'regions_dataset']:
     for minimum in [5, 10, 20]:
         for level in ['specific_epithet_trusted']:
             for image_size in [512, 400, 256]:

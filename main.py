@@ -11,7 +11,7 @@ from PIL import Image, ImageEnhance
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 PATHBASE = '/home/xandao/Imagens'
-CONTRAST = 1.2
+CONTRAST = 1.5
 PATCHES = [3]
 
 
@@ -167,7 +167,7 @@ def main():
         for cnn in ['vgg16', 'mobilenetv2', 'resnet50v2']:
             for color in ['GRAYSCALE', 'RGB']:
                 for image_size in ['512', '400', '256']:
-                    for minimum_image in ['10', '5']:
+                    for minimum_image in ['20', '10', '5']:
                         for level in ['specific_epithet_trusted']:
                                 print('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
                                       % (cnn, color, dataset, image_size, level, minimum_image))
