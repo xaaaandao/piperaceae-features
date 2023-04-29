@@ -9,7 +9,7 @@ import scipy.stats
 from PIL import Image, ImageEnhance
 from skimage.feature import local_binary_pattern
 
-CONTRAST=1.5
+CONTRAST=1.2
 
 
 def lbp(**kwargs):
@@ -119,10 +119,10 @@ def create_df_info(data, path, region=None):
     df = pd.DataFrame(data, columns=columns)
     filename = os.path.join(path, 'info.csv')
     print('file %s created' % filename)
-    df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n')
+    df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
 
 
-for dataset in ['pr_dataset', 'br_dataset', 'regions_dataset']:
+for dataset in ['pr_dataset', 'regions_dataset']:
     for minimum in [5, 10, 20]:
         for level in ['specific_epithet_trusted']:
             for image_size in [512, 400, 256]:
@@ -131,10 +131,10 @@ for dataset in ['pr_dataset', 'br_dataset', 'regions_dataset']:
                     if dataset == 'regions_dataset':
                         regions = []
                         for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
-                            path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', str(image_size), level, region, str(minimum))
+                            path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, region, str(image_size), str(minimum))
                             n_features, output_path, total_samples = extract_features(dataset, extractor, path)
                             info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
-                                 path, output_path, total_samples, image_size, CONTRAST])
+                                 path, output_path, total_samples, image_size, CONTRAST, region])
                             create_df_info(info, output_path, region=region)
                     else:
                         path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, str(image_size), str(minimum))
