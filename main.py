@@ -11,7 +11,7 @@ from PIL import Image, ImageEnhance
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 PATHBASE = '/home/xandao/Imagens'
-CONTRAST = 1.5
+CONTRAST = 1.8
 PATCHES = [3]
 
 

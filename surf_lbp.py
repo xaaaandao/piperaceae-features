@@ -9,7 +9,7 @@ import scipy.stats
 from PIL import Image, ImageEnhance
 from skimage.feature import local_binary_pattern
 
-CONTRAST=1.8
+CONTRAST=1.2
 
 
 def lbp(**kwargs):
@@ -39,20 +39,23 @@ def surf(**kwargs):
 
     surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000)
     kp, histograma = surf.detectAndCompute(image, None)
+    
+    if not len(histograma.shape) == 2:
+        raise SystemError('histograma SURF error')
 
     v_hist = histograma.shape[0]
 
     vetor_aux = np.mean(histograma, axis=0)
-    mean = vetor_aux[0:vetor_aux.shape[1]]
+    mean = vetor_aux[0:vetor_aux.shape[0]]
 
     vetor_aux = np.std(histograma, axis=0)
-    desv_pad = vetor_aux[0:vetor_aux.shape[1]]
+    desv_pad = vetor_aux[0:vetor_aux.shape[0]]
 
     vetor_aux = scipy.stats.kurtosis(histograma, bias=False, axis=0)
-    kurtosis = vetor_aux[0:vetor_aux.shape[1]]
+    kurtosis = vetor_aux[0:vetor_aux.shape[0]]
 
     vetor_aux = scipy.stats.skew(histograma, bias=False, axis=0)
-    skew = vetor_aux[0:vetor_aux.shape[1]]
+    skew = vetor_aux[0:vetor_aux.shape[0]]
 
     v_hist = np.array([v_hist], dtype=int)
     label = np.array([label], dtype=int)
@@ -124,12 +127,12 @@ def create_df_info(data, path, region=None):
     df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
 
 
-for dataset in ['br_dataset', 'regions_dataset']:
+for dataset in ['pr_dataset', 'regions_dataset', 'br_dataset']:
     for minimum in [5, 10, 20]:
         for level in ['specific_epithet_trusted']:
-            for image_size in [512, 400, 256]:
+            for image_size in [256, 400, 512]:
                 info = []
-                for extractor in [lbp, surf]:
+                for extractor in [surf]:
                     if dataset == 'regions_dataset':
                         regions = []
                         for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
