@@ -38,7 +38,7 @@ def adjust_contrast(image):
     #image brightness enhancer
     enhancer = ImageEnhance.Contrast(image)
             
-    factor = 1.5 #decrease constrast
+    factor = 1.5
     image = enhancer.enhance(factor)
     return image
 
@@ -113,7 +113,7 @@ def save_information(color, cnn, dataset, image_size, input_path, level, minimum
 
     df = pd.DataFrame(data, index=index)
     filename = os.path.join(output_path, 'info.csv')
-    df.to_csv(filename, sep=';', index=index, header=None, lineterminator='\n', doublequote=True)
+    df.to_csv(filename, sep=';', index=index, header=None, line_terminator='\n', doublequote=True)
 
 
 def prepare(cnn, color, dataset, image_size, level, minimum_image, input_path, region=None):
