@@ -9,7 +9,7 @@ import scipy.stats
 from PIL import Image, ImageEnhance
 from skimage.feature import local_binary_pattern
 
-CONTRAST=1.2
+CONTRAST=1.5
 
 
 def lbp(**kwargs):
@@ -19,16 +19,16 @@ def lbp(**kwargs):
     radius = 1
     n_points = 8 * radius
 
-    n_bins = n_neighbors * (n_neighbors + 3)
+    n_bins = n_neighbors * (n_neighbors - 1) + 3
     lbp = local_binary_pattern(image, n_points, radius, method='uniform')
 
     hist, _ = np.histogram(lbp.ravel(), bins=n_bins, range=(0, n_bins))
 
-    label = np.array([label], dtype=int)
-    features = np.append(hist, label)
-
     hist = hist.astype('float')
     hist /= (hist.sum() + 1e-6)
+
+    label = np.array([label], dtype=int)
+    features = np.append(hist, label)
 
     return features, features.shape[0] - 1
 
@@ -127,12 +127,12 @@ def create_df_info(data, path, region=None):
     df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
 
 
-for dataset in ['pr_dataset', 'regions_dataset', 'br_dataset']:
+for dataset in ['pr_dataset']:
     for minimum in [5, 10, 20]:
         for level in ['specific_epithet_trusted']:
             for image_size in [256, 400, 512]:
                 info = []
-                for extractor in [surf]:
+                for extractor in [lbp, surf]:
                     if dataset == 'regions_dataset':
                         regions = []
                         for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
