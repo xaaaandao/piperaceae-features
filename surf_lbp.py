@@ -9,7 +9,7 @@ import scipy.stats
 from PIL import Image, ImageEnhance
 from skimage.feature import local_binary_pattern
 
-CONTRAST=1.5
+CONTRAST=1.2
 
 
 def lbp(**kwargs):
@@ -33,7 +33,7 @@ def lbp(**kwargs):
     return features, features.shape[0] - 1
 
 
-def surf(**kwargs):
+def surf64(**kwargs):
     image = kwargs['image']
     label = kwargs['label']
 
@@ -106,7 +106,7 @@ def extract_features(dataset, extractor, path):
     if not os.path.exists(path_final):
         os.makedirs(path_final)
 
-    fname = '%s.txt' % (extractor.__name__)
+    fname = '%s.txt' % extractor.__name__
     fname = os.path.join(path_final, fname)
     np.savetxt(fname, np.array(features), fmt='%s')
     print('file %s created' % fname)
@@ -127,12 +127,12 @@ def create_df_info(data, path, region=None):
     df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
 
 
-for dataset in ['pr_dataset']:
+for dataset in ['pr_dataset', 'regions_dataset', 'br_dataset']:
     for minimum in [5, 10, 20]:
         for level in ['specific_epithet_trusted']:
             for image_size in [256, 400, 512]:
                 info = []
-                for extractor in [lbp, surf]:
+                for extractor in [lbp, surf64]:
                     if dataset == 'regions_dataset':
                         regions = []
                         for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
