@@ -11,7 +11,6 @@ from PIL import Image, ImageEnhance
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 PATHBASE = '/home/xandao/Imagens'
-CONTRAST = 1.8
 PATCHES = [3]
 
 
@@ -33,13 +32,13 @@ def get_model(model, **kwargs):
     raise ValueError
 
 
-def adjust_contrast(image):
+def adjust_contrast(contrast, image):
     enhancer = ImageEnhance.Contrast(image)
-    im_contrast = enhancer.enhance(CONTRAST)
+    im_contrast = enhancer.enhance(contrast)
     return im_contrast
 
 
-def extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, level, minimum_image, output_path, patches, region):
+def extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, input_path, level, minimum_image, output_path, patches, region):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuid)
     spec_height = image_size[0]
     spec_width = image_size[1]
@@ -65,7 +64,7 @@ def extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, 
                 print('fname: %s' % fname)
                 im_sliced = []
                 im = tf.keras.preprocessing.image.load_img(fname)
-                im_contrast = adjust_contrast(im)
+                im_contrast = adjust_contrast(contrast, im)
                 spec = tf.keras.preprocessing.image.img_to_array(im_contrast)
                 for p in next_patch(spec, n_patches):
                     p = preprocess_input(p)
@@ -73,7 +72,7 @@ def extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, 
                     p = np.expand_dims(p, axis=0)
                     features.append(model.predict(p))
 
-                save_image(dataset, fname, im_sliced)
+                save_image(contrast, dataset, fname, im_sliced)
 
             features = np.concatenate(features)
 
@@ -83,12 +82,12 @@ def extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, 
             n_samples, n_features = features.shape
 
             total_samples += n_samples
-        save_information(color, cnn, dataset, image_size, input_path, level, minimum_image, n_features, output_path, n_patches, region, total_samples)
+        save_information(color, cnn, contrast, dataset, image_size, input_path, level, minimum_image, n_features, output_path, n_patches, region, total_samples)
 
 
-def save_image(dataset, fname, im_sliced):
+def save_image(contrast, dataset, fname, im_sliced):
     dir_fname = str(pathlib.Path(fname).stem)
-    dir = str(pathlib.Path(fname).parent).replace(dataset, '%s_CONTRAST_%s' % (dataset, CONTRAST))
+    dir = str(pathlib.Path(fname).parent).replace(dataset, '%s_CONTRAST_%s' % (dataset, contrast))
     dir = os.path.join(dir, dir_fname)
     fname = str(pathlib.Path(fname).name)
 
@@ -117,12 +116,12 @@ def save_file(extension, features, fold, n_patches, output_path):
         np.savez_compressed(output_filename, x=features, y=np.repeat(fold, features.shape[0]))
 
 
-def save_information(color, cnn, dataset, image_size, input_path, level, minimum_image, n_features, output_path, patch, region, total_samples):
+def save_information(color, cnn, contrast, dataset, image_size, input_path, level, minimum_image, n_features, output_path, patch, region, total_samples):
     height = str(image_size[0])
     width = str(image_size[1])
-    index = ['cnn', 'color', 'dataset', 'height', 'width', 'level', 'minimum_image', 'input_path', 'output_path',
+    index = ['cnn', 'color', 'contrast', 'dataset', 'height', 'width', 'level', 'minimum_image', 'input_path', 'output_path',
              'patch', 'n_features', 'total_samples']
-    data = [cnn, color, dataset, height, width, level, minimum_image, input_path, output_path, patch, n_features, total_samples]
+    data = [cnn, color, contrast, dataset, height, width, level, minimum_image, input_path, output_path, patch, n_features, total_samples]
 
     if region:
         index.append('region')
@@ -134,7 +133,7 @@ def save_information(color, cnn, dataset, image_size, input_path, level, minimum
     df.to_csv(filename, sep=';', index=index, header=None, lineterminator='\n', doublequote=True)
 
 
-def prepare(cnn, color, dataset, image_size, level, minimum_image, input_path, output_path, region=None):
+def prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, input_path, output_path, region=None):
     if not os.path.exists(input_path):
         raise SystemError('path (%s) not exists' % input_path)
 
@@ -145,10 +144,10 @@ def prepare(cnn, color, dataset, image_size, level, minimum_image, input_path, o
     gpuid = 0
     patches = PATCHES
 
-    new_output_path = output_path.replace(dataset, '%s_features_CONTRAST_%s' % (dataset, CONTRAST))
+    path_features = output_path.replace(dataset, '%s_features_CONTRAST_%s' % (dataset, contrast))
 
-    if not os.path.exists(new_output_path):
-        os.makedirs(new_output_path)
+    if not os.path.exists(path_features):
+        os.makedirs(path_features)
 
     print('Feature Extraction Parameters')
     print('Pre-trained model: %s' % cnn)
@@ -159,29 +158,30 @@ def prepare(cnn, color, dataset, image_size, level, minimum_image, input_path, o
     print('Format string for output: %s ' % output_path)
     print('GPU ID: %d' % gpuid)
 
-    extract_features(cnn, color, dataset, gpuid, folds, image_size, input_path, level, minimum_image, new_output_path, patches, region)
+    extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, input_path, level, minimum_image, path_features, patches, region)
 
 
 def main():
-    for dataset in ['pr_dataset']:
-        for cnn in ['vgg16', 'mobilenetv2', 'resnet50v2']:
-            for color in ['GRAYSCALE', 'RGB']:
-                for image_size in ['512', '400', '256']:
-                    for minimum_image in ['20', '10', '5']:
-                        for level in ['specific_epithet_trusted']:
-                                print('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
-                                      % (cnn, color, dataset, image_size, level, minimum_image))
-                                if 'regions_dataset' == dataset:
-                                    for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
-                                        path = os.path.join(PATHBASE, dataset, color, level, region, image_size,
-                                                            minimum_image)
-                                        output_path = os.path.join(PATHBASE, dataset, color, level, image_size, region, minimum_image, cnn)
-                                        prepare(cnn, color, dataset, image_size, level, minimum_image, path, output_path, region=region)
-                                else:
-                                    path = os.path.join(PATHBASE, dataset, color, level, image_size, minimum_image)
-                                    output_path = os.path.join(PATHBASE, dataset, color, level, image_size,
-                                                               minimum_image, cnn)
-                                    prepare(cnn, color, dataset, image_size, level, minimum_image, path, output_path)
+    for contrast in [1.8, 1.5, 1.2]:
+        for dataset in ['pr_dataset']:
+            for cnn in ['vgg16']:
+                for color in ['GRAYSCALE', 'RGB']:
+                    for image_size in ['512', '400', '256']:
+                        for minimum_image in ['20', '10', '5']:
+                            for level in ['specific_epithet_trusted']:
+                                    print('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
+                                          % (cnn, color, dataset, image_size, level, minimum_image))
+                                    if 'regions_dataset' == dataset:
+                                        for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
+                                            path = os.path.join(PATHBASE, dataset, color, level, region, image_size,
+                                                                minimum_image)
+                                            output_path = os.path.join(PATHBASE, dataset, color, level, image_size, region, minimum_image, cnn)
+                                            prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, path, output_path, region=region)
+                                    else:
+                                        path = os.path.join(PATHBASE, dataset, color, level, image_size, minimum_image)
+                                        output_path = os.path.join(PATHBASE, dataset, color, level, image_size,
+                                                                   minimum_image, cnn)
+                                        prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, path, output_path)
                                 
 
 
