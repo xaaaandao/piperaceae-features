@@ -1,5 +1,5 @@
 function get_features()
-    path_base = "/home/xandao/Imagens";
+    path_base = "/home/none/Imagens";
     colors = ["GRAYSCALE"];
     datasets = ["br_dataset"];
     image_sizes = ["256", "400"];

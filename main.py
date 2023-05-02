@@ -10,7 +10,7 @@ from PIL import Image, ImageEnhance
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-PATHBASE = '/home/xandao/Imagens'
+PATHBASE = '/home/none/Imagens'
 PATCHES = [3]
 
 

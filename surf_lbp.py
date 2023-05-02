@@ -135,13 +135,13 @@ for contrast in [1.8, 1.5, 1.2]:
                         if dataset == 'regions_dataset':
                             regions = []
                             for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
-                                path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, region, str(image_size), str(minimum))
+                                path = os.path.join('/home/none/Imagens/', dataset, 'GRAYSCALE', level, region, str(image_size), str(minimum))
                                 n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
                                 info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
                                      path, output_path, total_samples, image_size, contrast, region])
                                 create_df_info(info, output_path, region=region)
                         else:
-                            path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, str(image_size), str(minimum))
+                            path = os.path.join('/home/none/Imagens/', dataset, 'GRAYSCALE', level, str(image_size), str(minimum))
                             n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
                             info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
                                           path, output_path, total_samples, image_size, contrast])
