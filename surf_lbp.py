@@ -113,11 +113,10 @@ def extract_features(contrast, dataset, extractor, path):
 
 
 def create_df_info(data, path, region=None):
-    columns = ['dataset', 'color', 'extractor', 'n_features', 'height', 'level', 'minimum_image', 'input_path', 'output_path', 'total_samples', 'width', 'factor']
+    columns = ['dataset', 'color', 'extractor', 'n_features', 'height', 'level', 'minimum_image', 'input_path', 'output_path', 'total_samples', 'width', 'contrast']
 
     if region:
         columns.append('region')
-        data.append(region)
 
     df = pd.DataFrame(data, columns=columns)
     filename = os.path.join(path, 'info.csv')
@@ -125,8 +124,8 @@ def create_df_info(data, path, region=None):
     df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
 
 
-for contrast in [1.8, 1.5, 1.2]:
-    for dataset in ['pr_dataset']:
+for contrast in [1.2]:
+    for dataset in ['regions_dataset']:
         for minimum in [5, 10, 20]:
             for level in ['specific_epithet_trusted']:
                 for image_size in [256, 400, 512]:
