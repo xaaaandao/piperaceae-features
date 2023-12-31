@@ -1,10 +1,4 @@
-# piperaceae-deep-feature
+# piperaceae-features
 
-### How to cite
-```
-@article {
-
-}
-```
 
 
