@@ -7,13 +7,13 @@ import tensorflow as tf
 
 from cnn import get_model, extract_features
 from image import adjust_contrast, get_input_shape
-from save import save_image, save_file, save_information
+from save import save_image, save_features, save_information
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 @click.command()
-@click.option('--colormode', type=click.Choice(['RGB', 'grayscale']), required=True)
+@click.option('--colormode', type=click.Choice(['RGB', 'grayscale']), default='RGB')
 @click.option('--contrast', type=float, required=False, default=-1)
 @click.option('--folds', '-f', type=int, default=3)
 @click.option('--gpu', type=int, default=0)
@@ -24,7 +24,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 @click.option('--output', '-o', type=click.Path(), required=True)
 @click.option('--patches', '-p', multiple=True, default=[1], type=int)
 @click.option('--width', '-w', type=int, required=True)
-def main(color_mode, contrast, folds, gpu, height, input, model, orientation, output, patches, width):
+def main(colormode, contrast, folds, gpu, height, input, model, orientation, output, patches, width):
     if not os.path.exists(input):
         raise SystemExit('%s does not exist' % input)
 
@@ -50,7 +50,7 @@ def main(color_mode, contrast, folds, gpu, height, input, model, orientation, ou
         print('Slicing images into %d non-overlapping patches...' % n_patches)
         tf.keras.backend.clear_session()
 
-        input_shape = get_input_shape(color_mode, n_patches, orientation, spec_height, spec_width)
+        input_shape = get_input_shape(colormode, n_patches, orientation, spec_height, spec_width)
         model, preprocess_input = get_model(model, weights='imagenet', include_top=False, input_shape=input_shape,
                                             pooling='avg')
 
@@ -73,13 +73,13 @@ def main(color_mode, contrast, folds, gpu, height, input, model, orientation, ou
 
             features = np.concatenate(features)
             for extension in ['npy', 'npz']:
-                save_file(extension, features, fold, n_patches, output)
+                save_features(extension, features, fold, input, n_patches, output)
 
             n_samples, n_features = features.shape
             total_samples = total_samples + n_samples
 
         model_name = model._name
-        save_information(color_mode, contrast, height, input, model_name, n_features, n_patches, output, total_samples, width)
+        save_information(colormode, contrast, height, input, model_name, n_features, n_patches, output, total_samples, width)
 
 
 if __name__ == '__main__':
