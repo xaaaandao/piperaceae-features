@@ -24,17 +24,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 @click.option('--output', '-o', type=click.Path(), required=True)
 @click.option('--patches', '-p', multiple=True, default=[1], type=int)
 @click.option('--width', '-w', type=int, required=True)
-def main(colormode, contrast, folds, gpu, height, input, model, orientation, output, patches, width):
+def main(color_mode, contrast, folds, gpu, height, input, model, orientation, output, patches, width):
     if not os.path.exists(input):
         raise SystemExit('%s does not exist' % input)
 
     os.makedirs(output, exist_ok=True)
-    list_folders = [p for p in pathlib.Path(input).glob('*') if p.is_dir()]
 
-    if len(list_folders) <= 0:
-        raise SystemExit('list is emtpy')
-
-    folds = len(list_folders)
     folds = list(range(1, folds + 1))
     patches = list(patches)
     total_samples = 0
@@ -55,7 +50,7 @@ def main(colormode, contrast, folds, gpu, height, input, model, orientation, out
         print('Slicing images into %d non-overlapping patches...' % n_patches)
         tf.keras.backend.clear_session()
 
-        input_shape = get_input_shape(colormode, n_patches, orientation, spec_height, spec_width)
+        input_shape = get_input_shape(color_mode, n_patches, orientation, spec_height, spec_width)
         model, preprocess_input = get_model(model, weights='imagenet', include_top=False, input_shape=input_shape,
                                             pooling='avg')
 
@@ -84,7 +79,7 @@ def main(colormode, contrast, folds, gpu, height, input, model, orientation, out
             total_samples = total_samples + n_samples
 
         model_name = model._name
-        save_information(colormode, contrast, height, input, model_name, n_features, n_patches, output, total_samples, width)
+        save_information(color_mode, contrast, height, input, model_name, n_features, n_patches, output, total_samples, width)
 
 
 if __name__ == '__main__':
