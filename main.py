@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 @click.command()
 @click.option('--colormode', type=click.Choice(['RGB', 'grayscale']), default='RGB')
-@click.option('--contrast', type=float, required=False, default=-1)
+@click.option('--contrast', type=float, required=False, default=0)
 @click.option('--folds', '-f', type=int, default=3)
 @click.option('--gpu', type=int, default=0)
 @click.option('--height', '-h', type=int, required=True)
