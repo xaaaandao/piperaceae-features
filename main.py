@@ -1,8 +1,7 @@
 import click
+import numpy as np
 import os
 import pathlib
-
-import numpy as np
 import tensorflow as tf
 
 from cnn import get_model, extract_features
@@ -13,7 +12,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 @click.command()
-@click.option('--colormode', type=click.Choice(['RGB', 'grayscale']), default='RGB')
+@click.option('--color', type=click.Choice(['RGB', 'grayscale']), default='RGB')
 @click.option('--contrast', type=float, required=False, default=0)
 @click.option('--folds', '-f', type=int, default=3)
 @click.option('--gpu', type=int, default=0)
@@ -24,7 +23,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 @click.option('--output', '-o', type=click.Path(), required=True)
 @click.option('--patches', '-p', multiple=True, default=[1], type=int)
 @click.option('--width', '-w', type=int, required=True)
-def main(colormode, contrast, folds, gpu, height, input, model, orientation, output, patches, width):
+def main(color, contrast, folds, gpu, height, input, model, orientation, output, patches, width):
     if not os.path.exists(input):
         raise SystemExit('%s does not exist' % input)
 
@@ -33,6 +32,7 @@ def main(colormode, contrast, folds, gpu, height, input, model, orientation, out
     folds = list(range(1, folds + 1))
     patches = list(patches)
     total_samples = 0
+    n_features = 0
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
     spec_height = height
     spec_width = width
@@ -50,17 +50,19 @@ def main(colormode, contrast, folds, gpu, height, input, model, orientation, out
         print('Slicing images into %d non-overlapping patches...' % n_patches)
         tf.keras.backend.clear_session()
 
-        input_shape = get_input_shape(colormode, n_patches, orientation, spec_height, spec_width)
+        input_shape = get_input_shape(color, n_patches, orientation, spec_height, spec_width)
         model, preprocess_input = get_model(model, weights='imagenet', include_top=False, input_shape=input_shape,
                                             pooling='avg')
 
+        levels = []
+        filenames = []
         for fold in folds:
             input_path_proto = os.path.join(input, 'f%d' % fold)
             print('Extracting features for fold %d...' % fold)
 
             features = []
             for file in pathlib.Path(input_path_proto).rglob('*'):
-                print('file name: %s' % file.name)
+                print('filename: %s' % file.name)
                 image_sliced = []
                 image = tf.keras.preprocessing.image.load_img(file)
 
@@ -70,16 +72,17 @@ def main(colormode, contrast, folds, gpu, height, input, model, orientation, out
                 spec = tf.keras.preprocessing.image.img_to_array(image)
                 extract_features(features, image_sliced, model, n_patches, orientation, preprocess_input, spec)
                 save_image(contrast, file, fold, image_sliced, n_patches, output)
+                filenames.append([file.name, fold])
 
             features = np.concatenate(features)
-            for extension in ['npy', 'npz']:
-                save_features(extension, features, fold, input, n_patches, output)
+            save_features(features, fold, input, n_patches, output)
 
             n_samples, n_features = features.shape
             total_samples = total_samples + n_samples
-
-        model_name = model._name
-        save_information(colormode, contrast, height, input, model_name, n_features, n_patches, output, total_samples, width)
+            n_features = n_features + n_samples
+            levels.append([input_path_proto, len(list(pathlib.Path(input_path_proto).rglob('*'))), fold])
+        model_name = model.__class__.__name__
+        save_information(color, contrast, filenames, height, input, levels, model_name, n_features, n_patches, output, total_samples, width)
 
 
 if __name__ == '__main__':

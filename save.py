@@ -1,66 +1,112 @@
-import os
-import shutil
-
 import numpy as np
+import os
 import pandas as pd
+import pathlib
+import shutil
 import tensorflow as tf
 
+from typing import LiteralString
 
-def save_image(contrast: float, file, fold: int, image_sliced: list, patch: int, output):
-    fold = 'f%s' % fold
-    output_to_imgs = os.path.join(output, 'images', fold)
 
-    if contrast > 0:
-        output_to_imgs = os.path.join(output, 'images+contrast=%f' % contrast, fold)
+def save_image(contrast: float, file: pathlib, fold: int, images: list, patch: int,
+               path: LiteralString | pathlib.PurePath | str) -> None:
+    dirname = 'image_CONTRAST_%.2f' % contrast if contrast > 0 else 'image'
+    path = create_path(path, dirname, 'f%s' % fold)
 
-    os.makedirs(output_to_imgs, exist_ok=True)
-    for i, image in enumerate(image_sliced, start=1):
-        fname = '%s_patch=%d+%d%s' % (file.stem, patch, i, file.suffix)
+    for i, image in enumerate(images, start=1):
+        filename = '%s_patch=%d+%d%s' % (file.stem, patch, i, file.suffix)
         if patch > 1:
-            os.makedirs(os.path.join(output_to_imgs, file.stem), exist_ok=True)
-            fname = os.path.join(output_to_imgs, file.stem, fname)
+            path_image = create_path(path, file.stem)
+            filename = os.path.join(path_image, filename)
         else:
-            fname = os.path.join(output_to_imgs, fname)
-        tf.keras.preprocessing.image.save_img(fname, image)
-        print('%s saved' % fname)
+            filename = os.path.join(path, filename)
+
+        tf.keras.preprocessing.image.save_img(filename, image)
+        print('%s saved' % filename)
 
 
-def save_features(extension: str, features, fold: int, input:str, n_patches: int, output: str):
-    out = os.path.join(output, 'features', extension)
-    os.makedirs(out, exist_ok=True)
-
-    filename = 'fold-%d_patches-%d.%s' % (fold, n_patches, extension)
-    filename = os.path.join(out, filename)
-
-    print('%s save' % filename)
-    if extension == 'npy':
-        np.save(filename, features, allow_pickle=True)
-    else:
-        np.savez_compressed(filename, x=features, y=get_classes(features, fold))
-
-    for f in ['info_dataset.csv', 'info_levels.csv', 'info_samples.csv']:
-        if os.path.exists(os.path.join(input, f)):
-            shutil.copy(os.path.join(input, f), os.path.join(output, 'features'))
+def create_path(path: LiteralString | pathlib.PurePath | str, *args) -> LiteralString | pathlib.PurePath | str:
+    path = os.path.join(path, *args)
+    os.makedirs(path, exist_ok=True)
+    return path
 
 
-def get_classes(features, fold: int):
+def save_features_npz(fold: int, features: np.ndarray, n_patches: int,
+                      path: LiteralString | pathlib.PurePath | str, ) -> None:
+    create_path(path, 'features', 'npz')
+    filename = 'fold-%d_patches-%d.npz' % (fold, n_patches)
+    np.save(filename, features, allow_pickle=True)
+
+
+def save_features_npy(fold: int, features: np.ndarray, n_patches: int,
+                      path: LiteralString | pathlib.PurePath | str, ) -> None:
+    create_path(path, 'features', 'npy')
+    filename = 'fold-%d_patches-%d.npy' % (fold, n_patches)
+    np.save(filename, features, allow_pickle=True)
+
+
+def save_features_info(input: LiteralString | pathlib.PurePath | str,
+                       path: LiteralString | pathlib.PurePath | str) -> None:
+    for filename in ['info_dataset.csv', 'info_levels.csv', 'info_samples.csv']:
+        if os.path.exists(os.path.join(input, filename)):
+            src = os.path.join(input, filename)
+            dst = create_path(path, 'features', filename)
+            shutil.copy(src, dst)
+
+
+def save_features(features: np.ndarray,
+                  fold: int,
+                  input: LiteralString | pathlib.PurePath | str,
+                  n_patches: int,
+                  path: LiteralString | pathlib.PurePath | str) -> None:
+    save_features_npz(fold, features, n_patches, path)
+    save_features_npy(fold, features, n_patches, path)
+    save_features_info(input, path)
+
+
+def get_labels(features: np.ndarray, fold: int) -> np.ndarray:
     return np.repeat(fold, features.shape[0])
 
 
-def save_information(colormode: str, contrast: float, height: int, input: str, model: str, n_features: int, n_patches: int, output,
+def save_samples(filenames: list, path: LiteralString | pathlib.PurePath | str) -> None:
+    columns = ['filename', 'fold']
+    filename = os.path.join(path, 'info_samples2.csv')
+    df = pd.DataFrame(filenames, columns=columns, index=None)
+    df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
+
+
+def save_levels(levels: list, path: LiteralString | pathlib.PurePath | str) -> None:
+    columns = ['levels', 'count', 'f']
+    filename = os.path.join(path, 'info_levels2.csv')
+    df = pd.DataFrame(levels, columns=columns, index=None)
+    df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
+
+
+def save_information(color: str,
+                     contrast: float,
+                     filenames: list,
+                     height: int,
+                     input: str,
+                     levels: list,
+                     model: str,
+                     n_features: int,
+                     n_patches: int,
+                     path: LiteralString | pathlib.PurePath | str,
                      total_samples: int, width: int):
-    data = {'colormode': colormode,
+    data = {'color': color,
             'contrast': contrast,
             'height': height,
             'input': input,
             'model': model,
             'n_features': n_features,
             'n_patches': n_patches,
-            'output': output,
+            'output': path,
             'total_samples': total_samples,
             'width': width}
     df = pd.DataFrame(data.values(), index=list(data.keys()))
-    filename = os.path.join(output, 'features', 'info.csv')
-
+    filename = os.path.join(path, 'features', 'info.csv')
     print('%s saved' % filename)
     df.to_csv(filename, sep=';', quoting=2, header=False, lineterminator='\n')
+
+    save_samples(filenames, path)
+    save_levels(levels, path)
