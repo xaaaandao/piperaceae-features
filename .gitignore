@@ -1,2 +1,5 @@
 *.npy
 *.npz
+*.sh
+*.jpeg
+*.png

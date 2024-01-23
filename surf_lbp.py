@@ -1,8 +1,9 @@
-from typing import Any
+import collections
 
 import click
 import cv2 as cv
 import cv2.xfeatures2d
+import datetime
 import numpy as np
 import os.path
 import pandas as pd
@@ -12,11 +13,13 @@ import scipy.stats
 
 from PIL import Image, ImageEnhance, ImageOps
 from skimage.feature import local_binary_pattern
+from typing import Any
+
+datefmt = '%d-%m-%Y+%H-%M-%S'
+dateandtime = datetime.datetime.now().strftime(datefmt)
 
 
-def lbp(image, label):
-    n_neighbors = 8
-    radius = 1
+def lbp(image: Image, label: int, n_neighbors: int = 8, radius: int = 1):
     n_points = 8 * radius
 
     n_bins = n_neighbors * (n_neighbors - 1) + 3
@@ -30,13 +33,13 @@ def lbp(image, label):
     label = np.array([label], dtype=int)
     features = np.append(hist, label)
 
-    return features, features.shape[0] - 1
+    return features
 
 
 def surf64(image: Any, label: int):
     surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000)
     kp, histograma = surf.detectAndCompute(image, None)
-    print(kp, histograma)
+
     if not len(histograma.shape) == 2:
         raise SystemError('histograma SURF error')
 
@@ -59,68 +62,19 @@ def surf64(image: Any, label: int):
 
     features = np.concatenate((v_hist, mean, desv_pad, kurtosis, skew, label))
 
-    # -1 to label
-    return features, features.shape[0] - 1
+    return features
 
 
-def adjust_contrast(contrast: float, filename: str, image, path: str) -> Image.Image:
+def adjust_contrast(contrast: float, filename: str, image) -> Image.Image:
     enhancer = ImageEnhance.Contrast(image)
     image_contrast = enhancer.enhance(contrast)
 
+    path = './%s' % dateandtime
+    os.makedirs(path, exist_ok=True)
     filename = os.path.join(path, filename)
     image_contrast.save(filename)
 
     return image_contrast
-
-
-def extract_features(contrast, dataset, extractor, path):
-    list_dirs = [p for p in pathlib.Path(path).rglob('*') if p.is_dir()]
-
-    features = []
-    n_features = 0
-    total_samples = 0
-    for d in list_dirs:
-        list_images = list(sorted(pathlib.Path(d).glob('*.jpeg')))
-        total_samples += len(list_images)
-
-        for i, file in enumerate(list_images, start=1):
-            print('[%d/%d] fname: %s' % (i, len(list_images), file.resolve()))
-            label = str(d.name).replace('f', '')
-
-            path_im_contrast = str(d).replace(dataset, '%s_CONTRAST_%s' % (dataset, contrast))
-            if not os.path.exists(path_im_contrast):
-                os.makedirs(path_im_contrast)
-
-            image = Image.open(file.resolve())
-            im_contrast = adjust_contrast(contrast, os.path.join(path_im_contrast, file.name), image)
-            params = {'image': im_contrast, 'label': label}
-            f, n_features = extractor(**params)
-            features.append(f)
-
-    path_features = path.replace(dataset, '%s_features_CONTRAST_%s' % (dataset, contrast))
-
-    if not os.path.exists(path_features):
-        os.makedirs(path_features)
-
-    fname = '%s.txt' % extractor.__name__
-    fname = os.path.join(path_features, fname)
-    np.savetxt(fname, np.array(features), fmt='%s')
-    print('file %s created' % fname)
-
-    return n_features, path_features, total_samples
-
-
-def create_df_info(data, path, region=None):
-    columns = ['dataset', 'color', 'extractor', 'n_features', 'height', 'level', 'minimum_image', 'input_path',
-               'output_path', 'total_samples', 'width', 'contrast']
-
-    if region:
-        columns.append('region')
-
-    df = pd.DataFrame(data, columns=columns)
-    filename = os.path.join(path, 'info.csv')
-    print('file %s created' % filename)
-    df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', quoting=2)
 
 
 def create_path(path: str, *args):
@@ -141,24 +95,40 @@ def save_surf(features_surf: np.ndarray, path: str):
     np.savetxt(filename, np.array(features_surf), fmt='%s')
 
 
-def save_info(contrast: float, descriptor: str, n_features: int, path: str, total_samples: int, n_patches: int = 1,
+def save_info(contrast: float, descriptor: str, height: int, n_features: int, path: str, total_samples: int, width: int,
+              n_patches: int = 1,
               color: str = 'grayscale'):
     # lbp and surf only works grayscale images
-    # data = {'n_features': n_features, 'total_samples': , 'contrast': contrast, 'model': descriptor , 'color': color, 'height':, 'width':, 'n_patches': n_patches}
-    # df = pd.DataFrame(data.values(), index=list(data.keys()))
-    # filename = os.path.join(path, 'info_%s.csv' % descriptor)
-    # df.to_csv(filename, header=False, index=True, sep=';', line_terminator='\n', quoting=2)
-    pass
+    data = {'n_features': n_features, 'total_samples': total_samples, 'contrast': contrast, 'model': descriptor,
+            'color': color, 'height': height, 'width': width, 'n_patches': n_patches}
+    df = pd.DataFrame(data.values(), index=list(data.keys()))
+    filename = os.path.join(path, 'info_%s.csv' % descriptor)
+    print('Saving %s' % filename)
+    df.to_csv(filename, header=False, index=True, sep=';', quoting=2)
 
 
-def save(contrast: float, features_lbp: np.ndarray, features_surf: np.ndarray, n_features_lbp: int,
-         n_features_surf64: int, path: str) -> None:
-    path = create_path(path, 'features')
+def save_samples(path, samples: list):
+    df = pd.DataFrame(samples, columns=['filename', 'label'])
+    filename = os.path.join(path, 'info_samples2.csv')
+    df.to_csv(filename, header=True, index=False, sep=';', quoting=2)
+
+
+def save_levels(levels: list, path):
+    levels = [[k[0], k[1], v] for k, v in dict(collections.Counter(levels)).items()]
+    df = pd.DataFrame(levels, columns=['label', 'f', 'count'])
+    filename = os.path.join(path, 'info_levels2.csv')
+    df.to_csv(filename, header=True, index=False, sep=';', quoting=2)
+
+
+def save(contrast: float, features_lbp: np.ndarray, features_surf: np.ndarray, height: int, levels: list, path: str,
+         samples: list, width: int) -> None:
+    path = create_path(path)
     save_lbp(features_lbp, path)
     save_surf(features_surf, path)
-    total_samples = features_surf.shape[0]
-    print('total samples: %d' % total_samples)
-    save_info(contrast, 'lbp', n_features_surf64, path)
+    save_info(contrast, 'surf', height, features_surf.shape[1], path, features_surf.shape[0], width)
+    save_info(contrast, 'lbp', height, features_lbp.shape[1], path, features_lbp.shape[0], width)
+    save_samples(path, samples)
+    save_levels(levels, path)
 
 
 @click.command()
@@ -174,6 +144,9 @@ def main(contrast, input, output):
 
     features_lbp = []
     features_surf = []
+    levels = []
+    samples = []
+    height, width = (0, 0)
     for file in sorted(pathlib.Path(input).rglob('*[.png,jpg,jpeg]')):
         print(file)
         finds = re.findall(r'/f(\d+)/', str(file))
@@ -184,42 +157,19 @@ def main(contrast, input, output):
             raise ValueError('label is a not numeric')
 
         image = ImageOps.grayscale(Image.open(file))
+        height, width = image.size
         label = int(finds[0])
         if contrast > 0:
-            image = adjust_contrast(contrast, file.name, image, output)
+            image = adjust_contrast(contrast, file.name, image)
 
-        print(image.size)
         image = np.array(image)
-        feature, n_features_lbp = lbp(image, label)
-        features_lbp.append(feature)
+        levels.append((label, file.parent.name))
+        samples.append([file.name, label])
+        features_lbp.append(lbp(image, label))
+        features_surf.append(surf64(image, label))
 
-        feature, n_features_surf64 = surf64(image, label)
-        features_surf.append(feature)
-
-    save(contrast, features_lbp, features_surf, n_features_lbp, n_features_surf64, output)
+    save(contrast, np.array(features_lbp), np.array(features_surf), height, levels, output, samples, width)
 
 
 if __name__ == '__main__':
     main()
-    # print('Loading data...')
-    # for contrast in [1.2]:
-    #     for dataset in ['regions_dataset']:
-    #         for minimum in [5, 10, 20]:
-    #             for level in ['specific_epithet_trusted']:
-    #                 for image_size in [256, 400, 512]:
-    #                     info = []
-    #                     for extractor in [lbp, surf64]:
-    #                         if dataset == 'regions_dataset':
-    #                             regions = []
-    #                             for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
-    #                                 path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, region, str(image_size), str(minimum))
-    #                                 n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
-    #                                 info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
-    #                                      path, output_path, total_samples, image_size, contrast, region])
-    #                                 create_df_info(info, output_path, region=region)
-    #                         else:
-    #                             path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, str(image_size), str(minimum))
-    #                             n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
-    #                             info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
-    #                                           path, output_path, total_samples, image_size, contrast])
-    #                             create_df_info(info, output_path)
