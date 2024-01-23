@@ -70,14 +70,14 @@ def get_labels(features: np.ndarray, fold: int) -> np.ndarray:
 
 def save_samples(filenames: list, path: LiteralString | pathlib.PurePath | str) -> None:
     columns = ['filename', 'fold']
-    filename = os.path.join(path, 'info_samples2.csv')
+    filename = os.path.join(path, 'features', 'info_samples2.csv')
     df = pd.DataFrame(filenames, columns=columns, index=None)
     df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
 
 
 def save_levels(levels: list, path: LiteralString | pathlib.PurePath | str) -> None:
     columns = ['levels', 'count', 'f']
-    filename = os.path.join(path, 'info_levels2.csv')
+    filename = os.path.join(path, 'features', 'info_levels2.csv')
     df = pd.DataFrame(levels, columns=columns, index=None)
     df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
 

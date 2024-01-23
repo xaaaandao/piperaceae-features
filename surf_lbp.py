@@ -1,18 +1,20 @@
+from typing import Any
+
+import click
 import cv2 as cv
 import cv2.xfeatures2d
 import numpy as np
 import os.path
 import pandas as pd
 import pathlib
+import re
 import scipy.stats
 
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 from skimage.feature import local_binary_pattern
 
 
-def lbp(**kwargs):
-    image = kwargs['image']
-    label = kwargs['label']
+def lbp(image, label):
     n_neighbors = 8
     radius = 1
     n_points = 8 * radius
@@ -31,13 +33,10 @@ def lbp(**kwargs):
     return features, features.shape[0] - 1
 
 
-def surf64(**kwargs):
-    image = kwargs['image']
-    label = kwargs['label']
-
+def surf64(image: Any, label: int):
     surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000)
     kp, histograma = surf.detectAndCompute(image, None)
-    
+    print(kp, histograma)
     if not len(histograma.shape) == 2:
         raise SystemError('histograma SURF error')
 
@@ -64,15 +63,14 @@ def surf64(**kwargs):
     return features, features.shape[0] - 1
 
 
-def adjust_contrast(contrast, fname, image):
-    # image brightness enhancer
+def adjust_contrast(contrast: float, filename: str, image, path: str) -> Image.Image:
     enhancer = ImageEnhance.Contrast(image)
-    im_contrast = enhancer.enhance(contrast)
+    image_contrast = enhancer.enhance(contrast)
 
-    im_contrast.save(fname)
-    print('%s created' % fname)
+    filename = os.path.join(path, filename)
+    image_contrast.save(filename)
 
-    return np.array(im_contrast)
+    return image_contrast
 
 
 def extract_features(contrast, dataset, extractor, path):
@@ -113,7 +111,8 @@ def extract_features(contrast, dataset, extractor, path):
 
 
 def create_df_info(data, path, region=None):
-    columns = ['dataset', 'color', 'extractor', 'n_features', 'height', 'level', 'minimum_image', 'input_path', 'output_path', 'total_samples', 'width', 'contrast']
+    columns = ['dataset', 'color', 'extractor', 'n_features', 'height', 'level', 'minimum_image', 'input_path',
+               'output_path', 'total_samples', 'width', 'contrast']
 
     if region:
         columns.append('region')
@@ -121,27 +120,106 @@ def create_df_info(data, path, region=None):
     df = pd.DataFrame(data, columns=columns)
     filename = os.path.join(path, 'info.csv')
     print('file %s created' % filename)
-    df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
+    df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', quoting=2)
 
 
-for contrast in [1.2]:
-    for dataset in ['regions_dataset']:
-        for minimum in [5, 10, 20]:
-            for level in ['specific_epithet_trusted']:
-                for image_size in [256, 400, 512]:
-                    info = []
-                    for extractor in [lbp, surf64]:
-                        if dataset == 'regions_dataset':
-                            regions = []
-                            for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
-                                path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, region, str(image_size), str(minimum))
-                                n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
-                                info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
-                                     path, output_path, total_samples, image_size, contrast, region])
-                                create_df_info(info, output_path, region=region)
-                        else:
-                            path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, str(image_size), str(minimum))
-                            n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
-                            info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
-                                          path, output_path, total_samples, image_size, contrast])
-                            create_df_info(info, output_path)
+def create_path(path: str, *args):
+    path = os.path.join(path, *args)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def save_lbp(features_lbp: np.ndarray, path: str):
+    filename = os.path.join(path, 'lbp.txt')
+    print('file %s created' % filename)
+    np.savetxt(filename, np.array(features_lbp), fmt='%s')
+
+
+def save_surf(features_surf: np.ndarray, path: str):
+    filename = os.path.join(path, 'surf.txt')
+    print('file %s created' % filename)
+    np.savetxt(filename, np.array(features_surf), fmt='%s')
+
+
+def save_info(contrast: float, descriptor: str, n_features: int, path: str, total_samples: int, n_patches: int = 1,
+              color: str = 'grayscale'):
+    # lbp and surf only works grayscale images
+    # data = {'n_features': n_features, 'total_samples': , 'contrast': contrast, 'model': descriptor , 'color': color, 'height':, 'width':, 'n_patches': n_patches}
+    # df = pd.DataFrame(data.values(), index=list(data.keys()))
+    # filename = os.path.join(path, 'info_%s.csv' % descriptor)
+    # df.to_csv(filename, header=False, index=True, sep=';', line_terminator='\n', quoting=2)
+    pass
+
+
+def save(contrast: float, features_lbp: np.ndarray, features_surf: np.ndarray, n_features_lbp: int,
+         n_features_surf64: int, path: str) -> None:
+    path = create_path(path, 'features')
+    save_lbp(features_lbp, path)
+    save_surf(features_surf, path)
+    total_samples = features_surf.shape[0]
+    print('total samples: %d' % total_samples)
+    save_info(contrast, 'lbp', n_features_surf64, path)
+
+
+@click.command()
+@click.option('--contrast', '-c', type=float, default=0.0)
+# @click.option('--descriptor', '-d', type=click.Choice(['lbp', 'surf']), required=True, multiple=True)
+@click.option('--input', '-i', type=click.Path(), required=True)
+@click.option('--output', '-o', type=click.Path(), default='./non-handcraft')
+def main(contrast, input, output):
+    if not os.path.exists(input):
+        raise IsADirectoryError('input not founded: %s' % output)
+
+    print('loading images from %s' % input)
+
+    features_lbp = []
+    features_surf = []
+    for file in sorted(pathlib.Path(input).rglob('*[.png,jpg,jpeg]')):
+        print(file)
+        finds = re.findall(r'/f(\d+)/', str(file))
+        if len(finds) == 0:
+            raise ValueError('problems in found a label')
+
+        if not finds[0].isnumeric():
+            raise ValueError('label is a not numeric')
+
+        image = ImageOps.grayscale(Image.open(file))
+        label = int(finds[0])
+        if contrast > 0:
+            image = adjust_contrast(contrast, file.name, image, output)
+
+        print(image.size)
+        image = np.array(image)
+        feature, n_features_lbp = lbp(image, label)
+        features_lbp.append(feature)
+
+        feature, n_features_surf64 = surf64(image, label)
+        features_surf.append(feature)
+
+    save(contrast, features_lbp, features_surf, n_features_lbp, n_features_surf64, output)
+
+
+if __name__ == '__main__':
+    main()
+    # print('Loading data...')
+    # for contrast in [1.2]:
+    #     for dataset in ['regions_dataset']:
+    #         for minimum in [5, 10, 20]:
+    #             for level in ['specific_epithet_trusted']:
+    #                 for image_size in [256, 400, 512]:
+    #                     info = []
+    #                     for extractor in [lbp, surf64]:
+    #                         if dataset == 'regions_dataset':
+    #                             regions = []
+    #                             for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
+    #                                 path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, region, str(image_size), str(minimum))
+    #                                 n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
+    #                                 info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
+    #                                      path, output_path, total_samples, image_size, contrast, region])
+    #                                 create_df_info(info, output_path, region=region)
+    #                         else:
+    #                             path = os.path.join('/home/xandao/Imagens/', dataset, 'GRAYSCALE', level, str(image_size), str(minimum))
+    #                             n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
+    #                             info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
+    #                                           path, output_path, total_samples, image_size, contrast])
+    #                             create_df_info(info, output_path)
