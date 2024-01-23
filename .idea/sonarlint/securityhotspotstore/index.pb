@@ -41,8 +41,6 @@ G.idea/sonarlint/issuestore/f/1/f1bdda93d9a278e358509d498e17d97764c1fb29,0/e/0e
 :
 
 extract.sh,b/d/bdab9942340c84d9cb6deb98f092ef4835a2b01d
-N
-non-handcraft/info_levels2.csv,6/e/6e3ff0c513abcc45e855822d8b395c3f9e9153d6
 T
 $.idea/runConfigurations/surf_lbp.xml,7/b/7b3bbb87c8db1ce682c70331a8ac38f233ae1987
 Å

@@ -101,7 +101,7 @@ def save_information(color: str,
             'n_features': n_features,
             'n_patches': n_patches,
             'output': path,
-            'total_samples': total_samples,
+            'total_samples': total_samples / n_patches,
             'width': width}
     df = pd.DataFrame(data.values(), index=list(data.keys()))
     filename = os.path.join(path, 'features', 'info.csv')

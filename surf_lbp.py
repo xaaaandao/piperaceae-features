@@ -65,13 +65,13 @@ def surf64(image: Any, label: int):
     return features
 
 
-def adjust_contrast(contrast: float, filename: str, image) -> Image.Image:
+def adjust_contrast(contrast: float, descriptor: str, file: pathlib, image, path) -> Image.Image:
     enhancer = ImageEnhance.Contrast(image)
     image_contrast = enhancer.enhance(contrast)
 
-    path = './%s' % dateandtime
+    path = os.path.join(path, 'image', descriptor, str(file.parent.name))
     os.makedirs(path, exist_ok=True)
-    filename = os.path.join(path, filename)
+    filename = os.path.join(path, str(file.name))
     image_contrast.save(filename)
 
     return image_contrast
@@ -84,12 +84,14 @@ def create_path(path: str, *args):
 
 
 def save_lbp(features_lbp: np.ndarray, path: str):
+    path = create_path(path, 'lbp')
     filename = os.path.join(path, 'lbp.txt')
     print('file %s created' % filename)
     np.savetxt(filename, np.array(features_lbp), fmt='%s')
 
 
 def save_surf(features_surf: np.ndarray, path: str):
+    path = create_path(path, 'surf')
     filename = os.path.join(path, 'surf.txt')
     print('file %s created' % filename)
     np.savetxt(filename, np.array(features_surf), fmt='%s')
@@ -99,25 +101,27 @@ def save_info(contrast: float, descriptor: str, height: int, n_features: int, pa
               n_patches: int = 1,
               color: str = 'grayscale'):
     # lbp and surf only works grayscale images
-    data = {'n_features': n_features, 'total_samples': total_samples, 'contrast': contrast, 'model': descriptor,
+    data = {'n_features': n_features-1, 'total_samples': total_samples, 'contrast': contrast, 'descriptor': descriptor,
             'color': color, 'height': height, 'width': width, 'n_patches': n_patches}
     df = pd.DataFrame(data.values(), index=list(data.keys()))
-    filename = os.path.join(path, 'info_%s.csv' % descriptor)
+    filename = os.path.join(path, descriptor, 'info.csv')
     print('Saving %s' % filename)
-    df.to_csv(filename, header=False, index=True, sep=';', quoting=2)
+    df.to_csv(filename, sep=';', quoting=2, header=False, index=True, lineterminator='\n')
 
 
-def save_samples(path, samples: list):
+def save_samples(descriptor: str, path, samples: list):
     df = pd.DataFrame(samples, columns=['filename', 'label'])
-    filename = os.path.join(path, 'info_samples2.csv')
-    df.to_csv(filename, header=True, index=False, sep=';', quoting=2)
+    filename = os.path.join(path, descriptor, 'info_samples.csv')
+    print('Saving %s' % filename)
+    df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
 
 
-def save_levels(levels: list, path):
+def save_levels(descriptor: str, levels: list, path):
     levels = [[k[0], k[1], v] for k, v in dict(collections.Counter(levels)).items()]
-    df = pd.DataFrame(levels, columns=['label', 'f', 'count'])
-    filename = os.path.join(path, 'info_levels2.csv')
-    df.to_csv(filename, header=True, index=False, sep=';', quoting=2)
+    df = pd.DataFrame(levels, columns=['levels', 'f', 'count'])
+    filename = os.path.join(path, descriptor, 'info_levels.csv')
+    print('Saving %s' % filename)
+    df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
 
 
 def save(contrast: float, features_lbp: np.ndarray, features_surf: np.ndarray, height: int, levels: list, path: str,
@@ -127,13 +131,13 @@ def save(contrast: float, features_lbp: np.ndarray, features_surf: np.ndarray, h
     save_surf(features_surf, path)
     save_info(contrast, 'surf', height, features_surf.shape[1], path, features_surf.shape[0], width)
     save_info(contrast, 'lbp', height, features_lbp.shape[1], path, features_lbp.shape[0], width)
-    save_samples(path, samples)
-    save_levels(levels, path)
+    for descriptor in ['surf', 'lbp']:
+        save_samples(descriptor, path, samples)
+        save_levels(descriptor, levels, path)
 
 
 @click.command()
 @click.option('--contrast', '-c', type=float, default=0.0)
-# @click.option('--descriptor', '-d', type=click.Choice(['lbp', 'surf']), required=True, multiple=True)
 @click.option('--input', '-i', type=click.Path(), required=True)
 @click.option('--output', '-o', type=click.Path(), default='./non-handcraft')
 def main(contrast, input, output):
@@ -160,10 +164,10 @@ def main(contrast, input, output):
         height, width = image.size
         label = int(finds[0])
         if contrast > 0:
-            image = adjust_contrast(contrast, file.name, image)
+            image = adjust_contrast(contrast, 'lbp-surf', file, image, output)
 
         image = np.array(image)
-        levels.append((label, file.parent.name))
+        levels.append((label, label))
         samples.append([file.name, label])
         features_lbp.append(lbp(image, label))
         features_surf.append(surf64(image, label))
