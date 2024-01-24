@@ -40,11 +40,15 @@ def create_path(path: LiteralString | pathlib.PurePath | str, *args) -> LiteralS
 
 
 def save_features_npz(fold: int, features: np.ndarray, n_patches: int,
-                      path: LiteralString | pathlib.PurePath | str, ) -> None:
+                      path: LiteralString | pathlib.PurePath | str) -> None:
     path = create_path(path, 'npz')
     filename = 'fold-%d_patches-%d.npz' % (fold, n_patches)
     filename = os.path.join(path, filename)
-    np.save(filename, features, allow_pickle=True)
+    np.savez_compressed(filename, x=features, y=get_classes(features, fold))
+
+
+def get_classes(features, fold: int):
+    return np.repeat(fold, features.shape[0])
 
 
 def save_features_npy(fold: int, features: np.ndarray, n_patches: int,
