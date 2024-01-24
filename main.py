@@ -71,11 +71,11 @@ def main(color, contrast, folds, gpu, height, input, model, orientation, output,
 
                 spec = tf.keras.preprocessing.image.img_to_array(image)
                 extract_features(features, image_sliced, model, n_patches, orientation, preprocess_input, spec)
-                save_image(contrast, file, fold, image_sliced, n_patches, input)
+                save_image(file, fold, image_sliced, model._name, n_patches, output)
                 filenames.append([file.name, fold])
 
             features = np.concatenate(features)
-            save_features(features, fold, input, n_patches, input)
+            save_features(features, fold, input, model._name, n_patches, output)
 
             n_samples, n_features = features.shape
             total_samples = total_samples + n_samples
