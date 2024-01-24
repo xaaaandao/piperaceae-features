@@ -80,7 +80,7 @@ def main(color, contrast, folds, gpu, height, input, model, orientation, output,
 
             n_samples, n_features = features.shape
             total_samples = total_samples + n_samples
-            n_features = n_features + n_samples
+            n_features = n_features + 0
             levels.append([input_path_proto, len(list(pathlib.Path(input_path_proto).rglob('*'))), fold])
 
         save_information(color, contrast, filenames, height, input, levels, model_name, n_features, n_patches, output, total_samples, width)
