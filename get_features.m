@@ -1,20 +1,27 @@
 function get_features()
-    path_base = "/home/xandao/Imagens";
-    colors = ["GRAYSCALE"];
-    datasets = ["br_dataset"];
-    image_sizes = ["256", "400"];
-    levels = ["specific_epithet_trusted"];
-    minimum_images = ["5"];
-    for dataset=datasets
-        for color=colors
-            for level=levels
-                for image_size=image_sizes
-                    for minimum_image=minimum_images
-                        a(color, dataset, image_size, level, minimum_image, path_base);
-                    end
-                end
-            end            
-        end
+    % path_base = "/home/xandao/Imagens";
+    % colors = ["GRAYSCALE"];
+    % datasets = ["br_dataset"];
+    % image_sizes = ["256", "400"];
+    % levels = ["specific_epithet_trusted"];
+    % minimum_images = ["5"];
+    % for dataset=datasets
+    %     for color=colors
+    %         for level=levels
+    %             for image_size=image_sizes
+    %                 for minimum_image=minimum_images
+    %                     a(color, dataset, image_size, level, minimum_image, path_base);
+    %                 end
+    %             end
+    %         end            
+    %     end
+    % end
+    % dirs = fullfile("/home", "xandao", "test2", "images")
+    for dd = dir(dirs)
+        % for d = dd 
+        %     p = fullfile(dirs, d.name)
+        % 
+        % end
     end
 end
 
