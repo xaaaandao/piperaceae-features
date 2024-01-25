@@ -56,6 +56,7 @@ def main(color, contrast, folds, gpu, height, input, model, orientation, output,
 
         levels = []
         filenames = []
+        model_name = model._name
         for fold in folds:
             input_path_proto = os.path.join(input, 'f%d' % fold)
             print('Extracting features for fold %d...' % fold)
@@ -63,25 +64,25 @@ def main(color, contrast, folds, gpu, height, input, model, orientation, output,
             features = []
             for file in pathlib.Path(input_path_proto).rglob('*'):
                 print('filename: %s' % file.name)
-                image_sliced = []
+                images = []
                 image = tf.keras.preprocessing.image.load_img(file)
 
                 if contrast > 0:
                     image = adjust_contrast(contrast, image)
 
                 spec = tf.keras.preprocessing.image.img_to_array(image)
-                extract_features(features, image_sliced, model, n_patches, orientation, preprocess_input, spec)
-                save_image(contrast, file, fold, image_sliced, n_patches, input)
+                extract_features(features, images, model, n_patches, orientation, preprocess_input, spec)
+                save_image(contrast,file, fold, image, images, model_name, n_patches, output)
                 filenames.append([file.name, fold])
 
             features = np.concatenate(features)
-            save_features(features, fold, input, n_patches, input)
+            save_features(features, fold, input, model_name, n_patches, output)
 
             n_samples, n_features = features.shape
             total_samples = total_samples + n_samples
-            n_features = n_features + n_samples
+            n_features = n_features + 0
             levels.append([input_path_proto, len(list(pathlib.Path(input_path_proto).rglob('*'))), fold])
-        model_name = model.__class__.__name__
+
         save_information(color, contrast, filenames, height, input, levels, model_name, n_features, n_patches, output, total_samples, width)
 
 

@@ -65,11 +65,11 @@ def surf64(image: Any, label: int):
     return features
 
 
-def adjust_contrast(contrast: float, descriptor: str, file: pathlib, image, path) -> Image.Image:
+def adjust_contrast(contrast: float, file: pathlib, image, path) -> Image.Image:
     enhancer = ImageEnhance.Contrast(image)
     image_contrast = enhancer.enhance(contrast)
 
-    path = os.path.join(path, 'image', descriptor, str(file.parent.name))
+    path = os.path.join(path, 'images', 'pillow', str(file.parent.name))
     os.makedirs(path, exist_ok=True)
     filename = os.path.join(path, str(file.name))
     image_contrast.save(filename)
@@ -84,14 +84,14 @@ def create_path(path: str, *args):
 
 
 def save_lbp(features_lbp: np.ndarray, path: str):
-    path = create_path(path, 'lbp')
+    path = create_path(path, 'features', 'lbp')
     filename = os.path.join(path, 'lbp.txt')
     print('file %s created' % filename)
     np.savetxt(filename, np.array(features_lbp), fmt='%s')
 
 
 def save_surf(features_surf: np.ndarray, path: str):
-    path = create_path(path, 'surf')
+    path = create_path(path, 'features', 'surf')
     filename = os.path.join(path, 'surf.txt')
     print('file %s created' % filename)
     np.savetxt(filename, np.array(features_surf), fmt='%s')
@@ -101,17 +101,18 @@ def save_info(contrast: float, descriptor: str, height: int, n_features: int, pa
               n_patches: int = 1,
               color: str = 'grayscale'):
     # lbp and surf only works grayscale images
-    data = {'n_features': n_features-1, 'total_samples': total_samples, 'contrast': contrast, 'descriptor': descriptor,
+    data = {'n_features': n_features - 1, 'total_samples': total_samples, 'contrast': contrast,
+            'descriptor': descriptor,
             'color': color, 'height': height, 'width': width, 'n_patches': n_patches}
     df = pd.DataFrame(data.values(), index=list(data.keys()))
-    filename = os.path.join(path, descriptor, 'info.csv')
+    filename = os.path.join(path, 'features', descriptor, 'info.csv')
     print('Saving %s' % filename)
     df.to_csv(filename, sep=';', quoting=2, header=False, index=True, lineterminator='\n')
 
 
 def save_samples(descriptor: str, path, samples: list):
     df = pd.DataFrame(samples, columns=['filename', 'label'])
-    filename = os.path.join(path, descriptor, 'info_samples.csv')
+    filename = os.path.join(path, 'features', descriptor, 'info_samples.csv')
     print('Saving %s' % filename)
     df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
 
@@ -119,7 +120,7 @@ def save_samples(descriptor: str, path, samples: list):
 def save_levels(descriptor: str, levels: list, path):
     levels = [[k[0], k[1], v] for k, v in dict(collections.Counter(levels)).items()]
     df = pd.DataFrame(levels, columns=['levels', 'f', 'count'])
-    filename = os.path.join(path, descriptor, 'info_levels.csv')
+    filename = os.path.join(path, 'features', descriptor, 'info_levels.csv')
     print('Saving %s' % filename)
     df.to_csv(filename, sep=';', quoting=2, header=True, index=False, lineterminator='\n')
 
@@ -164,7 +165,7 @@ def main(contrast, input, output):
         height, width = image.size
         label = int(finds[0])
         if contrast > 0:
-            image = adjust_contrast(contrast, 'lbp-surf', file, image, output)
+            image = adjust_contrast(contrast, file, image, output)
 
         image = np.array(image)
         levels.append((label, label))

@@ -1,4 +1,4 @@
 
-npython:S1192l"JDefine a constant instead of duplicating this literal 'Saving %s' 3 times.(–ıÃØûÿÿÿÿ8Ÿ®šÃÓ1
-Ppython:S1481)",Replace unused local variable "kp" with "_".(ÄøĞÏÿÿÿÿÿ8Ÿ®šÃÓ1
-Gpython:S1940+")Use the opposite operator ("!=") instead.(šè×`8Ÿ®šÃÓ1
+npython:S1192m"JDefine a constant instead of duplicating this literal 'Saving %s' 3 times.(–ıÃØûÿÿÿÿ8”Å¦ÅÓ1
+Ppython:S1481)",Replace unused local variable "kp" with "_".(ÄøĞÏÿÿÿÿÿ8”Å¦ÅÓ1
+Gpython:S1940+")Use the opposite operator ("!=") instead.(šè×`8”Å¦ÅÓ1
