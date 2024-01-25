@@ -12,17 +12,17 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 @click.command()
-@click.option('--color', type=click.Choice(['RGB', 'grayscale']), default='RGB')
-@click.option('--contrast', type=float, required=False, default=0)
-@click.option('--folds', '-f', type=int, default=3)
-@click.option('--gpu', type=int, default=0)
-@click.option('--height', '-h', type=int, required=True)
-@click.option('--input', '-i', type=click.Path(), required=True)
-@click.option('--model', '-m', type=click.Choice(['vgg16', 'resnet50v2', 'mobilenetv2']), required=True)
-@click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True)
-@click.option('--output', '-o', type=click.Path(), required=True)
-@click.option('--patches', '-p', multiple=True, default=[1], type=int)
-@click.option('--width', '-w', type=int, required=True)
+@click.option('--color', type=click.Choice(['RGB', 'grayscale']), default='RGB', help='Color of image input.')
+@click.option('--contrast', type=float, required=False, default=0, help=' Value that to use in adjusting the contrast.')
+@click.option('--folds', '-f', type=int, default=3, help='Number of classes in the dataset.')
+@click.option('--gpu', type=int, default=0, help='ID of GPU.')
+@click.option('--height', '-h', type=int, required=True, help='Height of image input.')
+@click.option('--input', '-i', type=click.Path(), required=True, help='Path to images.')
+@click.option('--model', '-m', type=click.Choice(['vgg16', 'resnet50v2', 'mobilenetv2']), required=True, help='A model to extract the features.')
+@click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True, help='An orientation of patches must made in an image.')
+@click.option('--output', '-o', type=click.Path(), required=True, help='Path to store the NPZ, NPY, and CSV files.')
+@click.option('--patches', '-p', multiple=True, default=[1], type=int, help='A number the patches must made in an image.')
+@click.option('--width', '-w', type=int, required=True, help='Width of image input.')
 def main(color, contrast, folds, gpu, height, input, model, orientation, output, patches, width):
     if not os.path.exists(input):
         raise SystemExit('%s does not exist' % input)

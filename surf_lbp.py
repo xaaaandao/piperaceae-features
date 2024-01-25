@@ -138,9 +138,9 @@ def save(contrast: float, features_lbp: np.ndarray, features_surf: np.ndarray, h
 
 
 @click.command()
-@click.option('--contrast', '-c', type=float, default=0.0)
-@click.option('--input', '-i', type=click.Path(), required=True)
-@click.option('--output', '-o', type=click.Path(), default='./non-handcraft')
+@click.option('--contrast', '-c', type=float, default=0.0, help='Value that to use in adjusting the contrast.')
+@click.option('--input', '-i', type=click.Path(), required=True, help='Path to images.')
+@click.option('--output', '-o', type=click.Path(), default='./non-handcraft', help='Path to store the text and CSV files.')
 def main(contrast, input, output):
     if not os.path.exists(input):
         raise IsADirectoryError('input not founded: %s' % output)

@@ -5,8 +5,6 @@ function get_features()
     output='/home/xandao/pr_dataset_contraste/GRAYSCALE/specific_epithet_trusted/256/5/';
     delete_features(output);
     extract_features(contrast, path, output);
-
-    
 end
 
 
