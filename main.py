@@ -1,56 +1,55 @@
+from typing import LiteralString
+
+import click
 import glob
-import math
 import numpy as np
 import os
-import pandas as pd
 import pathlib
 import tensorflow as tf
 
-from PIL import Image, ImageEnhance
+from image import adjust_contrast
+from model import get_model, get_input_shape
+from patch import next_patch
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-PATHBASE = '/home/none/Imagens'
-PATCHES = [3]
+
+def save_features():
+    pass
 
 
-def next_patch(spec, n):
-    step = math.floor(spec.shape[0] / n)
-    for i in range(n):
-        yield spec[i * step:(i + 1) * step, :, :]
+def save_images():
+    pass
 
 
-def get_model(model, **kwargs):
-    if model == 'vgg16':
-        return tf.keras.applications.vgg16.VGG16(**kwargs), tf.keras.applications.vgg16.preprocess_input
-    if model == 'resnet50v2':
-        return tf.keras.applications.resnet_v2.ResNet50V2(**kwargs), tf.keras.applications.resnet_v2.preprocess_input
-    if model == 'mobilenetv2':
-        return tf.keras.applications.mobilenet_v2.MobileNetV2(
-            **kwargs), tf.keras.applications.mobilenet_v2.preprocess_input
-
-    raise ValueError
-
-
-def adjust_contrast(contrast, image):
-    enhancer = ImageEnhance.Contrast(image)
-    im_contrast = enhancer.enhance(contrast)
-    return im_contrast
-
-
-def extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, input_path, level, minimum_image, output_path, patches, region):
+def extract_features(contrast: float, folds: int, gpuid: int, height: int, input: pathlib.Path | LiteralString | str,
+                     model: str, orientation: str,
+                     output: pathlib.Path | LiteralString | str, patches: int, width: int):
+    """
+    Para cada valor de pacthes é feito o corte na imagem, por exemplo: patch=3 serão feitas três divisões nas imagens.
+    Logo após, é carregado o modelo que foi definido pelo usuário. No final, é utilizado o modelo para extrair as
+    características de cada imagem que estão disponíveis em cada fold.
+    :param contrast: valor do contraste a ser aplicado na imagem.
+    :param folds: número de folds (ou número de classes).
+    :param gpuid: número da GPU.
+    :param height: altura da imagem.
+    :param input: diretório de entrada das imagens.
+    :param model: modelo que será utilizado para extrair as features.
+    :param orientation: orientação da divisão da imagem (horizontal, vertical ou ambas as direções).
+    :param output: diretóiro de saída.
+    :param patches: número de patches (divisões) na imagem/.
+    :param width: largura da imagem.
+    """
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuid)
-    spec_height = image_size[0]
-    spec_width = image_size[1]
-    input_path_proto = os.path.join(input_path, 'f%d', '*.jpeg')
+    input_path_proto = os.path.join(input, 'f%d', '*.jpeg')
 
-    for n_patches in patches:
-        print('Slicing images into %d non-overlapping patches...' % (n_patches))
+    for patch in patches:
+        print('Slicing images into %d non-overlapping patches...' % (patch))
         tf.keras.backend.clear_session()
 
-        input_shape = (math.floor(spec_height / n_patches), spec_width, 3)
+        input_shape = get_input_shape(orientation, patch, height, width)
 
-        model, preprocess_input = get_model(cnn, weights='imagenet', include_top=False,
+        model, preprocess_input = get_model(model, weights='imagenet', include_top=False,
                                             input_shape=input_shape, pooling='avg')
         total_samples = 0
         n_features = 0
@@ -61,129 +60,57 @@ def extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, in
 
             features = []
             for fname in sorted(glob.glob(input_path_proto % (fold))):
-                print('fname: %s' % fname)
-                im_sliced = []
+                images = []
                 im = tf.keras.preprocessing.image.load_img(fname)
-                im_contrast = adjust_contrast(contrast, im)
-                spec = tf.keras.preprocessing.image.img_to_array(im_contrast)
-                for p in next_patch(spec, n_patches):
+
+                if contrast > 0:
+                    im = adjust_contrast(contrast, im)
+
+                spec = tf.keras.preprocessing.image.img_to_array(im)
+                for p in next_patch(spec, patch):
                     p = preprocess_input(p)
-                    im_sliced.append(tf.keras.preprocessing.image.array_to_img(p))
+
+                    # Armazena na lista a imagem recortada
+                    images.append(tf.keras.preprocessing.image.array_to_img(p))
                     p = np.expand_dims(p, axis=0)
+
+                    # Armazena na lista as features extraídas
                     features.append(model.predict(p))
 
-                save_image(contrast, dataset, fname, im_sliced)
+                save_images()
 
             features = np.concatenate(features)
 
-            for format in ['npy', 'npz']:
-                save_file(format, features, fold, n_patches, output_path)
-
-            n_samples, n_features = features.shape
-
-            total_samples += n_samples
-        save_information(color, cnn, contrast, dataset, image_size, input_path, level, minimum_image, n_features, output_path, n_patches, region, total_samples)
+            save_features()
 
 
-def save_image(contrast, dataset, fname, im_sliced):
-    dir_fname = str(pathlib.Path(fname).stem)
-    dir = str(pathlib.Path(fname).parent).replace(dataset, '%s_CONTRAST_%s' % (dataset, contrast))
-    dir = os.path.join(dir, dir_fname)
-    fname = str(pathlib.Path(fname).name)
-
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-    for i, im in enumerate(im_sliced, start=1):
-        fname_sliced = os.path.join(dir, '%s_%s' % (i, fname))
-
-        print('%s saved' % fname_sliced)
-        tf.keras.preprocessing.image.save_img(fname_sliced, im)
-
-
-def save_file(extension, features, fold, n_patches, output_path):
-    output_path = os.path.join(output_path, extension)
-
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
-    output_path = os.path.join(output_path, 'fold-%d_patches-%d.' + extension)
-    output_filename = output_path % (fold, n_patches)
-    print('%s save' % output_filename)
-    if extension == 'npy':
-        np.save(output_filename, features, allow_pickle=True)
-    else:
-        np.savez_compressed(output_filename, x=features, y=np.repeat(fold, features.shape[0]))
-
-
-def save_information(color, cnn, contrast, dataset, image_size, input_path, level, minimum_image, n_features, output_path, patch, region, total_samples):
-    height = str(image_size[0])
-    width = str(image_size[1])
-    index = ['cnn', 'color', 'contrast', 'dataset', 'height', 'width', 'level', 'minimum_image', 'input_path', 'output_path',
-             'patch', 'n_features', 'total_samples']
-    data = [cnn, color, contrast, dataset, height, width, level, minimum_image, input_path, output_path, patch, n_features, total_samples]
-
-    if region:
-        index.append('region')
-        data.append(region)
-
-    df = pd.DataFrame(data, index=index)
-    filename = os.path.join(output_path, 'info.csv')
-    print('%s saved' % filename)
-    df.to_csv(filename, sep=';', index=index, header=None, lineterminator='\n', doublequote=True)
-
-
-def prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, input_path, output_path, region=None):
-    if not os.path.exists(input_path):
-        raise SystemError('path (%s) not exists' % input_path)
-
-    list_folders = [p for p in pathlib.Path(input_path).glob('*') if p.is_dir()]
-    folds = len(list_folders)
-    folds = list(range(1, folds + 1))
-    image_size = (int(image_size), int(image_size))
-    gpuid = 0
-    patches = PATCHES
-
-    path_features = output_path.replace(dataset, '%s_features_CONTRAST_%s' % (dataset, contrast))
-
-    if not os.path.exists(path_features):
-        os.makedirs(path_features)
-
+@click
+@click.option('-c', '--contrast', type=float)
+@click.option('-f', '--format')
+@click.option('--gpuid', type=int, default=0)
+@click.option('-h', '--height', type=int, required=True)
+@click.option('-i', '--input', type=click.Path, required=True)
+@click.option('-m', '--model', required=True)
+@click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']),
+              default='horizontal')
+@click.option('--output')
+@click.option('-p', '--patch', required=True, default=[1], multiple=True)
+@click.option('-s', '--save_images', type=bool)
+@click.option('-w', '--width', type=int, required=True)
+def main(folds: int, gpuid: int, height: int, input, model, orientation, output, patch: int, save_images: bool,
+         width: int):
     print('Feature Extraction Parameters')
-    print('Pre-trained model: %s' % cnn)
-    print('Non-overlapping patches per image: %s' % str(patches))
+    print('Pre-trained model: %s' % model)
+    print('Non-overlapping patches per image: %s' % str(patch))
     print('Folds: %s' % str(folds))
-    print('Image Dimensions h=%s, w=%s ' % (image_size, image_size))
-    print('Format string for input: %s ' % input_path)
-    print('Format string for output: %s ' % output_path)
+    print('Image Dimensions h=%s, w=%s ' % (height, width))
+    print('Format string for input: %s ' % input)
+    print('Format string for output: %s ' % output)
     print('GPU ID: %d' % gpuid)
 
-    extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, input_path, level, minimum_image, path_features, patches, region)
-
-
-def main():
-    for contrast in [1.8, 1.5, 1.2]:
-        for dataset in ['pr_dataset']:
-            for cnn in ['vgg16']:
-                for color in ['GRAYSCALE', 'RGB']:
-                    for image_size in ['512', '400', '256']:
-                        for minimum_image in ['20', '10', '5']:
-                            for level in ['specific_epithet_trusted']:
-                                    print('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
-                                          % (cnn, color, dataset, image_size, level, minimum_image))
-                                    if 'regions_dataset' == dataset:
-                                        for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
-                                            path = os.path.join(PATHBASE, dataset, color, level, region, image_size,
-                                                                minimum_image)
-                                            output_path = os.path.join(PATHBASE, dataset, color, level, image_size, region, minimum_image, cnn)
-                                            prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, path, output_path, region=region)
-                                    else:
-                                        path = os.path.join(PATHBASE, dataset, color, level, image_size, minimum_image)
-                                        output_path = os.path.join(PATHBASE, dataset, color, level, image_size,
-                                                                   minimum_image, cnn)
-                                        prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, path, output_path)
-                                
-
+    folders = [p for p in pathlib.Path(input).glob('*') if p.is_dir()]
+    folds = len(folders)
+    folds = list(range(1, folds + 1))
 
 
 if __name__ == '__main__':
