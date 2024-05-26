@@ -87,7 +87,7 @@ def extract_features(contrast, dataset, extractor, path):
 
         for i, file in enumerate(list_images, start=1):
             print('[%d/%d] fname: %s' % (i, len(list_images), file.resolve()))
-            label = str(d.name).replace('f', '')
+            label = str(d.name).replace('f1', '')
 
             path_im_contrast = str(d).replace(dataset, '%s_CONTRAST_%s' % (dataset, contrast))
             if not os.path.exists(path_im_contrast):
