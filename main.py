@@ -103,7 +103,7 @@ def extract_features(contrast: float,
 @click.option('-i', '--input', required=True)
 @click.option('-m', '--model', type=click.Choice(['mobilenetv2', 'vgg16', 'resnet50v2']), required=True)
 @click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True)
-@click.option('-o', '--output', default='output')
+@click.option('-o', '--exemplos', default='exemplos')
 @click.option('-p', '--patches', required=True, default=[1], multiple=True)
 @click.option('-s', '--save_images', is_flag=True)
 @click.option('-w', '--width', type=int, required=True)
@@ -115,7 +115,7 @@ def main(contrast: float, formats: list, folds: int, gpuid: int, height: int, in
     print('Folds: %s' % str(folds))
     print('Image Dimensions h=%s, w=%s ' % (height, width))
     print('Format string for input: %s ' % input)
-    print('Format string for output: %s ' % output)
+    print('Format string for exemplos: %s ' % output)
     print('GPU ID: %d' % gpuid)
 
     folds = list(range(1, folds + 1))
