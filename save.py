@@ -3,9 +3,10 @@ import pathlib
 from typing import LiteralString
 
 import numpy as np
+import pandas as pd
 
 
-def save_npy(features: np.ndarray, fold: int, patch:int, output: pathlib.Path | LiteralString | str) -> None:
+def save_npy(features: np.ndarray, fold: int, patch: int, output: pathlib.Path | LiteralString | str) -> None:
     """
     Cria uma pasta para salvar as features no formato npy de um determinado fold.
     :param features: matriz com as características extraídas.
@@ -21,7 +22,7 @@ def save_npy(features: np.ndarray, fold: int, patch:int, output: pathlib.Path | 
     np.save(filename, features, allow_pickle=True)
 
 
-def save_npz(features: np.ndarray, fold: int, patch:int, output: pathlib.Path | LiteralString | str) -> None:
+def save_npz(features: np.ndarray, fold: int, patch: int, output: pathlib.Path | LiteralString | str) -> None:
     """
     Cria uma pasta para salvar as features no formato npz de um determinado fold.
     :param features: matriz com as características extraídas.
@@ -73,7 +74,35 @@ def save_images(fold: int, images: list, output: pathlib.Path | LiteralString | 
         image.save_patches(p)
 
 
-def save(fold: int, features: np.ndarray, format: str, images: list, patch: int, output: pathlib.Path | LiteralString | str) -> None:
+def save_csv(fold: int, features: np.ndarray, images: list, patch: int, output: pathlib.Path | LiteralString | str):
+    save_dataset(features, fold, images, output, patch)
+    save_samples(images, output)
+
+
+def save_dataset(features, fold, images: list, output, patch):
+    n_samples = features.shape[0]
+    n_features = features.shape[1]
+    data = {
+        'fold': [fold],
+        'patches': [patch],
+        'features': [n_features],
+        'samples': [len(images)],
+        'samples+patch': np.sum([len(image.patches) for image in images]),
+    }
+    df = pd.DataFrame(data, columns=list(data.keys()))
+    filename = os.path.join(output, 'dataset.csv')
+    df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
+
+
+def save_samples(images, output):
+    data = {'filename': [image.filename for image in images], 'fold': [image.fold for image in images]}
+    df = pd.DataFrame(data, columns=list(data.keys()))
+    filename = os.path.join(output, 'samples.csv')
+    df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
+
+
+def save(fold: int, features: np.ndarray, format: str, images: list, patch: int,
+         output: pathlib.Path | LiteralString | str) -> None:
     """
     Chama as funções que salvam as features, as imagens e as informações da extração.
     :param fold: a classe que pertence aquelas imagens.
@@ -85,3 +114,4 @@ def save(fold: int, features: np.ndarray, format: str, images: list, patch: int,
     """
     save_features(fold, features, format, patch, output)
     save_images(fold, images, output)
+    save_csv(fold, features, images, patch, output)

@@ -29,15 +29,15 @@ def main(input, output, zfill):
     output = os.path.join(output, dt_now)
     os.makedirs(output, exist_ok=True)
 
-    out_dirs = list()
+    dirs = list()
     for i, p in enumerate(sorted(pathlib.Path(input).glob('*')), start=1):
         if p.is_dir():
             idx = str(i).zfill(zfill)
             dst = os.path.join(output, 'f' + idx)
             shutil.copytree(input, dst)
-            out_dirs.append(InputOutputDir(input, dst))
+            dirs.append(InputOutputDir(input, dst))
 
-    df = pd.DataFrame(data=out_dirs, columns=['input', 'output'])
+    df = pd.DataFrame(data=dirs, columns=['input', 'output'])
     filename = os.path.join(output, 'input.csv')
     df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
 

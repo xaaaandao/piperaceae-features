@@ -58,15 +58,14 @@ def extract_features(contrast: float,
 
         model, preprocess_input = get_model(model, weights='imagenet', include_top=False,
                                             input_shape=input_shape, pooling='avg')
-        total_samples = 0
         n_features = 0
+        images=[]
         for fold in folds:
             print('Extracting features for fold %d...' % (fold))
             if len(glob.glob(input_path_proto % (fold))) == 0:
                 raise RuntimeError('No files found in: %s' % (input_path_proto % (fold)))
 
             features = []
-            images = []
             for fname in sorted(glob.glob(input_path_proto % (fold))):
                 patch_images = []
                 image = tf.keras.preprocessing.image.load_img(fname)
@@ -90,6 +89,7 @@ def extract_features(contrast: float,
                 images.append(i)
             features = np.concatenate(features)
             save(fold, features, format, images, patch, output)
+        # save(a)
 
 
 @click.command()
@@ -103,7 +103,7 @@ def extract_features(contrast: float,
 @click.option('-i', '--input', required=True)
 @click.option('-m', '--model', type=click.Choice(['mobilenetv2', 'vgg16', 'resnet50v2']), required=True)
 @click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True)
-@click.option('-o', '--exemplos', default='exemplos')
+@click.option('-o', '--output', default='output')
 @click.option('-p', '--patches', required=True, default=[1], multiple=True)
 @click.option('-s', '--save_images', is_flag=True)
 @click.option('-w', '--width', type=int, required=True)

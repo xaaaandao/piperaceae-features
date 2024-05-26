@@ -26,6 +26,7 @@ class Image:
     filename: str = dataclasses.field(init=False)
     extension: str = dataclasses.field(init=False)
     path: str
+    fold: str = dataclasses.field(init=False)
     patches: list = dataclasses.field(default_factory=list)
 
     def __post_init__(self):
@@ -35,6 +36,7 @@ class Image:
         p = pathlib.Path(self.path)
         self.filename = p.stem
         self.extension = p.suffix
+        self.fold = p.parent
 
     def print(self):
         print(self.filename, self.extension, self.path, sep='\n')
