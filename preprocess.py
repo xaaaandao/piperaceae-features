@@ -18,7 +18,7 @@ class InputOutputDir:
 @click.command()
 @click.option('-i', '--input', required=True)
 @click.option('-o', '--output', default='output')
-@click.option('-z', '--zfill', type=int, default=0)
+@click.option('-z', '--zfill', type=int, default=1)
 def main(input, output, zfill):
     dt_now = datetime.datetime.now()
     dt_now = dt_now.strftime('%d-%m-%Y-%H-%M-%S')

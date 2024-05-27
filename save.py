@@ -74,12 +74,30 @@ def save_images(fold: int, images: list, output: pathlib.Path | LiteralString | 
         image.save_patches(p)
 
 
-def save_csv(fold: int, features: np.ndarray, images: list, patch: int, output: pathlib.Path | LiteralString | str):
-    save_dataset(features, fold, images, output, patch)
+def save_csv(fold: int, features: np.ndarray, images: list, output: pathlib.Path | LiteralString | str, patch: int):
+    """
+    Gera dois arquivos CSV:
+    1- Salva as informações do dataset.
+    2- Salva as informações das amostras que foram extraídas as características.
+    :param fold:  a classe que pertence aquelas imagens.
+    :param features: quantidade de features extraídas.
+    :param images: lista com as imagens que deverão ser salvas.
+    :param patch: quantidade de divisões feitas nas imagens.
+    :param output: local onde será salvo as imagens.
+    """
+    save_dataset(fold, features, images, output, patch)
     save_samples(images, output)
 
 
-def save_dataset(features, fold, images: list, output, patch):
+def save_dataset(fold:int, features: np.ndarray, images: list, output: pathlib.Path | LiteralString | str, patch: int):
+    """
+    Salva as informações do dataset.
+    :param fold:  a classe que pertence aquelas imagens.
+    :param features: quantidade de features extraídas.
+    :param images: lista com as imagens que deverão ser salvas.
+    :param patch: quantidade de divisões feitas nas imagens.
+    :param output: local onde será salvo as imagens.
+    """
     n_samples = features.shape[0]
     n_features = features.shape[1]
     data = {
@@ -95,6 +113,14 @@ def save_dataset(features, fold, images: list, output, patch):
 
 
 def save_samples(images, output):
+    """
+    Salva as informações das amostras que foram extraídas as características.
+    :param fold:  a classe que pertence aquelas imagens.
+    :param features: quantidade de features extraídas.
+    :param images: lista com as imagens que deverão ser salvas.
+    :param patch: quantidade de divisões feitas nas imagens.
+    :param output: local onde será salvo as imagens.
+    """
     data = {'filename': [image.filename for image in images], 'fold': [image.fold for image in images]}
     df = pd.DataFrame(data, columns=list(data.keys()))
     filename = os.path.join(output, 'samples.csv')
@@ -114,4 +140,4 @@ def save(fold: int, features: np.ndarray, format: str, images: list, patch: int,
     """
     save_features(fold, features, format, patch, output)
     save_images(fold, images, output)
-    save_csv(fold, features, images, patch, output)
+    save_csv(fold, features, images, output, patch)
