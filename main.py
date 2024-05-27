@@ -89,7 +89,6 @@ def extract_features(contrast: float,
                 images.append(i)
             features = np.concatenate(features)
             save(fold, features, format, images, patch, output)
-        # save(a)
 
 
 @click.command()

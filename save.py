@@ -57,6 +57,15 @@ def save_features(fold: int, features, format: str, patch: int, output: pathlib.
             save_npz(features, fold, patch, output)
 
 
+def save_features(descriptor: str, features: np.ndarray, output):
+    p = os.path.join(output, descriptor)
+    os.makedirs(p, exist_ok=True)
+
+    filename = '%s.txt' % descriptor
+    filename = os.path.join(p, filename)
+    np.savetxt(filename, np.array(features), fmt='%s')
+
+
 def save_images(fold: int, images: list, output: pathlib.Path | LiteralString | str) -> None:
     """
     Cria uma pasta para salvar as imagens que foram divididas.
@@ -74,22 +83,24 @@ def save_images(fold: int, images: list, output: pathlib.Path | LiteralString | 
         image.save_patches(p)
 
 
-def save_csv(fold: int, features: np.ndarray, images: list, output: pathlib.Path | LiteralString | str, patch: int):
+def save_csv(fold: int, features: np.ndarray, images: list, model: str, output: pathlib.Path | LiteralString | str,
+             patch: int):
     """
     Gera dois arquivos CSV:
     1- Salva as informações do dataset.
     2- Salva as informações das amostras que foram extraídas as características.
-    :param fold:  a classe que pertence aquelas imagens.
+    :param fold: a classe que pertence aquelas imagens.
     :param features: quantidade de features extraídas.
     :param images: lista com as imagens que deverão ser salvas.
-    :param patch: quantidade de divisões feitas nas imagens.
+    :param model: rede usada para extrair as características.
     :param output: local onde será salvo as imagens.
+    :param patch: quantidade de divisões feitas nas imagens.
     """
     save_dataset(fold, features, images, output, patch)
     save_samples(images, output)
 
 
-def save_dataset(fold:int, features: np.ndarray, images: list, output: pathlib.Path | LiteralString | str, patch: int):
+def save_dataset(fold: int, features: np.ndarray, images: list, output: pathlib.Path | LiteralString | str, patch: int):
     """
     Salva as informações do dataset.
     :param fold:  a classe que pertence aquelas imagens.
@@ -141,3 +152,9 @@ def save(fold: int, features: np.ndarray, format: str, images: list, patch: int,
     save_features(fold, features, format, patch, output)
     save_images(fold, images, output)
     save_csv(fold, features, images, output, patch)
+
+
+def save(descriptor: str, features: np.ndarray, images: list, output: pathlib.Path | LiteralString | str) -> None:
+    save_features(descriptor, features, output)
+    save_samples(images, output)
+    save_dataset(np.max([image.fold for image in images]), features, images, output, patch=1)

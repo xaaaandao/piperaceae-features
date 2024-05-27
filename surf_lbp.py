@@ -1,18 +1,28 @@
+
+import click
 import cv2 as cv
 import cv2.xfeatures2d
 import numpy as np
 import os.path
 import pandas as pd
 import pathlib
+import PIL
 import scipy.stats
-
-from PIL import Image, ImageEnhance
 from skimage.feature import local_binary_pattern
+import tensorflow as tf
+from typing import LiteralString
+
+from image import Image, adjust_contrast
+from save import save
 
 
-def lbp(**kwargs):
-    image = kwargs['image']
-    label = kwargs['label']
+def lbp(image: PIL.Image, label: int) -> np.ndarray:
+    """
+    Extrai features usando o algoritmo SURF.
+    :param image: imagem que será extraída as features.
+    :param label: classe que pertence aquela imagem.
+    :return: np.ndarray: matriz com as features extraídas da imagem.
+    """
     n_neighbors = 8
     radius = 1
     n_points = 8 * radius
@@ -28,16 +38,19 @@ def lbp(**kwargs):
     label = np.array([label], dtype=int)
     features = np.append(hist, label)
 
-    return features, features.shape[0] - 1
+    return features
 
 
-def surf64(**kwargs):
-    image = kwargs['image']
-    label = kwargs['label']
-
+def surf64(image: PIL.Image, label: int) -> np.ndarray:
+    """
+    Extrai features usando o algoritmo SURF.
+    :param image: imagem que será extraída as features.
+    :param label: classe que pertence aquela imagem.
+    :return: np.ndarray: matriz com as features extraídas da imagem.
+    """
     surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000)
     kp, histograma = surf.detectAndCompute(image, None)
-    
+
     if not len(histograma.shape) == 2:
         raise SystemError('histograma SURF error')
 
@@ -61,88 +74,87 @@ def surf64(**kwargs):
     features = np.concatenate((v_hist, mean, desv_pad, kurtosis, skew, label))
 
     # -1 to label
-    return features, features.shape[0] - 1
+    return features
 
 
-def adjust_contrast(contrast, fname, image):
-    # image brightness enhancer
-    enhancer = ImageEnhance.Contrast(image)
-    im_contrast = enhancer.enhance(contrast)
-
-    im_contrast.save(fname)
-    print('%s created' % fname)
-
-    return np.array(im_contrast)
-
-
-def extract_features(contrast, dataset, extractor, path):
-    list_dirs = [p for p in pathlib.Path(path).rglob('*') if p.is_dir()]
-
+def extract_features(contrast: float,
+                     descriptor: str,
+                     folds: int,
+                     format: list,
+                     gpuid: int,
+                     height: int,
+                     input: pathlib.Path | LiteralString | str,
+                     orientation: str,
+                     output: pathlib.Path | LiteralString | str,
+                     patches: int,
+                     save_images: bool,
+                     width: int):
+    """
+    Extrai as features das imagens presentes no diretório passado por parâmetro.
+    :param contrast: valor do contraste a ser aplicado na imagem.
+    :param descriptor: nome do descritor a ser utilizado.
+    :param folds: número de folds (ou número de classes).
+    :param gpuid: número da GPU.
+    :param height: altura da imagem.
+    :param input: diretório de entrada das imagens.
+    :param model: modelo que será utilizado para extrair as features.
+    :param orientation: orientação da divisão da imagem (horizontal, vertical ou ambas as direções).
+    :param output: diretóiro de saída.
+    :param patches: número de patches (divisões) na imagem/.
+    :param width: largura da imagem.
+    :return:
+    """
     features = []
-    n_features = 0
-    total_samples = 0
-    for d in list_dirs:
-        list_images = list(sorted(pathlib.Path(d).glob('*.jpeg')))
-        total_samples += len(list_images)
+    images = []
+    for image in list(sorted(pathlib.Path(input).rglob('*.jpeg'))):
+        im = PIL.Image.open(image.resolve())
 
-        for i, file in enumerate(list_images, start=1):
-            print('[%d/%d] fname: %s' % (i, len(list_images), file.resolve()))
-            label = str(d.name).replace('f1', '')
+        if contrast > 0:
+            im = np.array(adjust_contrast(contrast, im))
 
-            path_im_contrast = str(d).replace(dataset, '%s_CONTRAST_%s' % (dataset, contrast))
-            if not os.path.exists(path_im_contrast):
-                os.makedirs(path_im_contrast)
+        img = Image(image, list(im))
 
-            image = Image.open(file.resolve())
-            im_contrast = adjust_contrast(contrast, os.path.join(path_im_contrast, file.name), image)
-            params = {'image': im_contrast, 'label': label}
-            f, n_features = extractor(**params)
-            features.append(f)
+        if save_images:
+            img.save_patches(output)
 
-    path_features = path.replace(dataset, '%s_features_CONTRAST_%s' % (dataset, contrast))
+        images.append(img)
+        match descriptor:
+            case 'lbp':
+                features.append(lbp(im, img.fold))
+            case 'surf':
+                features.append(surf64(im, img.fold))
 
-    if not os.path.exists(path_features):
-        os.makedirs(path_features)
-
-    fname = '%s.txt' % extractor.__name__
-    fname = os.path.join(path_features, fname)
-    np.savetxt(fname, np.array(features), fmt='%s')
-    print('file %s created' % fname)
-
-    return n_features, path_features, total_samples
+    save(descriptor, features, images, output)
 
 
-def create_df_info(data, path, region=None):
-    columns = ['dataset', 'color', 'extractor', 'n_features', 'height', 'level', 'minimum_image', 'input_path', 'output_path', 'total_samples', 'width', 'factor']
+@click.command()
+@click.option('-c', '--contrast', type=float, default=0.0)
+@click.option('-d', '--descriptor', type=click.Choice(['surf', 'lbp']), required=True)
+@click.option('--formats', type=click.Choice(['all', 'npy', 'npz']),
+              required=True,
+              help='all: create features file in two format, npy: create features in npy format and npz: create features in npz format;')
+# @click.option('-f', '--folds', type=int)
+# @click.option('--gpuid', type=int, default=0)
+# @click.option('-h', '--height', type=int, required=True)
+@click.option('-i', '--input', required=True)
+# @click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True)
+@click.option('-o', '--output', default='output')
+# @click.option('-p', '--patches', required=True, default=[1], multiple=True)
+@click.option('-s', '--save_images', is_flag=True)
+# @click.option('-w', '--width', type=int, required=True)
+def main(contrast: float, formats: list, folds: int, gpuid: int, height: int, input, model, orientation, output,
+         patches: int, save_images: bool, width: int):
+    print('Feature Extraction Parameters')
+    print('Pre-trained model: %s' % model)
+    print('Non-overlapping patches per image: %s' % str(patches))
+    print('Folds: %s' % str(folds))
+    print('Image Dimensions h=%s, w=%s ' % (height, width))
+    print('Format string for input: %s ' % input)
+    print('Format string for exemplos: %s ' % output)
+    print('GPU ID: %d' % gpuid)
 
-    if region:
-        columns.append('region')
-        data.append(region)
-
-    df = pd.DataFrame(data, columns=columns)
-    filename = os.path.join(path, 'info.csv')
-    print('file %s created' % filename)
-    df.to_csv(filename, header=True, index=False, sep=';', line_terminator='\n', doublequote=True)
+    extract_features(contrast, folds, formats, gpuid, height, input, model, orientation, output, patches, save_images, width)
 
 
-for contrast in [1.8, 1.5, 1.2]:
-    for dataset in ['pr_dataset']:
-        for minimum in [5, 10, 20]:
-            for level in ['specific_epithet_trusted']:
-                for image_size in [256, 400, 512]:
-                    info = []
-                    for extractor in [lbp, surf64]:
-                        if dataset == 'regions_dataset':
-                            regions = []
-                            for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
-                                path = os.path.join('/home/none/Imagens/', dataset, 'GRAYSCALE', level, region, str(image_size), str(minimum))
-                                n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
-                                info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
-                                     path, output_path, total_samples, image_size, contrast, region])
-                                create_df_info(info, output_path, region=region)
-                        else:
-                            path = os.path.join('/home/none/Imagens/', dataset, 'GRAYSCALE', level, str(image_size), str(minimum))
-                            n_features, output_path, total_samples = extract_features(contrast, dataset, extractor, path)
-                            info.append([dataset, 'GRAYSCALE', extractor.__name__, n_features, image_size, level, minimum,
-                                          path, output_path, total_samples, image_size, contrast])
-                            create_df_info(info, output_path)
+if __name__ == '__main__':
+    main()
