@@ -1,8 +1,8 @@
 
 Ppython:S14814",Replace unused local variable "kp" with "_".(ÄøĞÏÿÿÿÿÿ8‘ÊÙÚû1
 Gpython:S19406")Use the opposite operator ("!=") instead.(šè×`8‘ÊÙÚû1
-Lpython:S1172T"-Remove the unused function parameter "gpuid".(Û¯’Ã8‘ÊÙÚû1
-Mpython:S1172U".Remove the unused function parameter "height".(²©ç8‘ÊÙÚû1
-Wpython:S1172W"3Remove the unused function parameter "orientation".(ÎæØ”ùÿÿÿÿ8‘ÊÙÚû1
-Qpython:S1172["-Remove the unused function parameter "width".(âıÛ¾ÿÿÿÿÿ8šßµÛû1
 Rpython:S1172S".Remove the unused function parameter "format".(ş…úÿÿÿÿ8‘ÊÙÚû1
+Lpython:S1172T"-Remove the unused function parameter "gpuid".(Û¯’Ã8‘ÊÙÚû1
+Qpython:S1172["-Remove the unused function parameter "width".(âıÛ¾ÿÿÿÿÿ8šßµÛû1
+Wpython:S1172W"3Remove the unused function parameter "orientation".(ÎæØ”ùÿÿÿÿ8‘ÊÙÚû1
+Mpython:S1172U".Remove the unused function parameter "height".(²©ç8‘ÊÙÚû1
