@@ -1,31 +1,19 @@
-function [output] = format_time(descriptor, output)
-% FORMAT_TIME  Adiciona no diretório aonde serão salvos as features o
-% horário e o descritor utilizado.
-%   OUTPUT = format_time(descriptor, output) adiciona o horário e o
-%   descritor que está sendo utilizado.
+function [output] = format_time(output)
     dt_now = string(datetime);
     dt_now = strrep(dt_now, ':', '-');
     dt_now = strrep(dt_now, ' ', '+');
-    [output] = fullfile(output, dt_now, descriptor);
+    [output] = fullfile(output, dt_now);
 end
 
 function [label] = get_label(foldername)
-% GET_LABEL Captura a classe que pertence aquela amostra, baseado no nome
-% da pasta daquela imagem.
-%   LABEL = get_label(foldername) nome da pasta aonde será retirado a
-%   classe.
     foldername = strsplit(foldername, '/');
     foldername = string(foldername(end));
     label = strrep(foldername, 'f', '');
     [label] = str2num(label);
 end
 
-function extract_features(descriptor, input, output)
-% EXTRACT_FEATURES Extrai as features das imagens presentes no diretório
-% que foi passado por input. As features são salvas no diretório de output.
-%   extract_features(descriptor, input, output) produz arquivos com as
-%   características nas imagens.
-    output = format_time(descriptor, output);
+function gf(descriptor, input, output)
+    output = format_time(output);
 
     % o segundo parametro indica qual tipo está sendo verificado
     if ~exist(output, 'dir')
@@ -47,34 +35,30 @@ function extract_features(descriptor, input, output)
             case 'lbp'
                 features = lbp(image);
             case 'surf'
-                features = surf(image, 64);
+                features = surf(image);
             otherwise
                 error('descriptor invalid');
         end
 
-        save(descriptor, features, string(label), output);
+        fileout(descriptor, features, string(label), output);
     end
 end
 
 
-function save(descriptor, feature, label, output)
-% SAVE Salva as características extraídas em um arquivo .txt
-%   save(descriptor, feature, label, output) produz um arquivo TXT com
-% as características extraídas.
-    filename = fullfile(output, string(strjoin([descriptor, ".txt"], '')));
+function fileout(descriptor, feature, label, output)  
     % a = append
+    filename = dir([output, descriptor, ".txt"]);
+    display(filename);
     file = fopen(filename, "a");
     for i=1:length(feature)
         fprintf(file, "%s ", num2str(feature(i)));
     end
-    fprintf(file, "%s \n", string(label));
+    fprintf(file, "%s \n", strlabel);
     fclose(file);
 end
 
 
 function feature = lbp(image)
-% LBP Extrai as características das imagens usando o Local Binary Pattern.
-%   lbp(image) extrai as características de uma imagem usando LBP.
     lbpFeatures = extractLBPFeatures(image);
     numNeighbors = 8;
     numBins = numNeighbors*(numNeighbors-1)+3;
@@ -83,10 +67,7 @@ function feature = lbp(image)
 end
 
 
-function [featVector] = surf(image, SURFSize)
-% SURF Extrai as características das imagens usando o Speed Up Robust
-% Features.
-%   SURF(image, SURFSize) extrai as características de uma imagem usando SURF.    
+function [featVector] = surf(image, filename, SURFSize)
     points = detectSURFFeatures( image );
     [histograma, valid_points] = extractFeatures(image, points, 'SURFSize', SURFSize); 
     
@@ -119,5 +100,4 @@ function [featVector] = surf(image, SURFSize)
     featVector = [vHist, media, desvPad, obliq, curt];
 end
 
-
-extract_features('lbp', './test/dataset/GRAYSCALE', 'a');
+gf('lbp', './test/dataset/GRAYSCALE', 'a');
