@@ -26,7 +26,7 @@ def main(input, output, zfill):
     if not os.path.exists(input):
         raise FileNotFoundError(input)
 
-    output = os.path.join(output, dt_now)
+    # output = os.path.join(output, dt_now)
     os.makedirs(output, exist_ok=True)
 
     dirs = list()
@@ -34,8 +34,12 @@ def main(input, output, zfill):
         if p.is_dir():
             idx = str(i).zfill(zfill)
             dst = os.path.join(output, 'f' + idx)
-            shutil.copytree(input, dst)
-            dirs.append(InputOutputDir(input, dst))
+            os.makedirs(dst, exist_ok=True)
+            for filename in os.listdir(p):
+                src = os.path.join(p, filename)
+                shutil.copy(src, dst)
+                dirs.append(InputOutputDir(p.name, 'f'+idx))
+
 
     df = pd.DataFrame(data=dirs, columns=['input', 'output'])
     filename = os.path.join(output, 'input.csv')

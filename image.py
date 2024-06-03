@@ -36,10 +36,10 @@ class Image:
         p = pathlib.Path(self.path)
         self.filename = p.stem
         self.extension = p.suffix
-        self.fold = self.set_fold(p.parent)
+        self.fold = self.set_fold(p.parent.name)
 
-    def set_fold(self, p: pathlib.Path):
-        return int(str(p.parent).replace('f', ''))
+    def set_fold(self, p: pathlib.Path) -> int:
+        return int(float(str(p).replace('f', '').lstrip('0')))
 
     def print(self):
         print(self.filename, self.extension, self.path, sep='\n')

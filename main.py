@@ -48,7 +48,8 @@ def extract_features(contrast: float,
     """
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuid)
     input_path_proto = os.path.join(input, 'f%d', '*.jpeg')
-    output = os.path.join(output, dt_now)
+    # output = os.path.join(output, dt_now)
+    os.makedirs(output, exist_ok=True)
 
     for patch in patches:
         print('Slicing patch_images into %d non-overlapping patches...' % (patch))
@@ -60,35 +61,32 @@ def extract_features(contrast: float,
                                             input_shape=input_shape, pooling='avg')
         n_features = 0
         images=[]
-        for fold in folds:
-            print('Extracting features for fold %d...' % (fold))
-            if len(glob.glob(input_path_proto % (fold))) == 0:
-                raise RuntimeError('No files found in: %s' % (input_path_proto % (fold)))
+        for idx, fold in enumerate(sorted(pathlib.Path(input).glob('*')), start=1):
+            if fold.is_dir():
+                features = []
+                for fname in sorted(pathlib.Path(fold).glob('*.jpeg')):
+                    patch_images = []
+                    image = tf.keras.preprocessing.image.load_img(fname)
 
-            features = []
-            for fname in sorted(glob.glob(input_path_proto % (fold))):
-                patch_images = []
-                image = tf.keras.preprocessing.image.load_img(fname)
+                    if contrast > 0:
+                        image = adjust_contrast(contrast, image)
 
-                if contrast > 0:
-                    image = adjust_contrast(contrast, image)
+                    spec = tf.keras.preprocessing.image.img_to_array(image)
+                    for p in next_patch(spec, patch, orientation):
+                        p = preprocess_input(p)
 
-                spec = tf.keras.preprocessing.image.img_to_array(image)
-                for p in next_patch(spec, patch, orientation):
-                    p = preprocess_input(p)
+                        # Armazena na lista a imagem recortada
+                        if save_images:
+                            patch_images.append(tf.keras.preprocessing.image.array_to_img(p))
+                        p = np.expand_dims(p, axis=0)
 
-                    # Armazena na lista a imagem recortada
-                    if save_images:
-                        patch_images.append(tf.keras.preprocessing.image.array_to_img(p))
-                    p = np.expand_dims(p, axis=0)
+                        # Armazena na lista as features extraídas
+                        features.append(model.predict(p))
 
-                    # Armazena na lista as features extraídas
-                    features.append(model.predict(p))
-
-                i = Image(fname, patch_images)
-                images.append(i)
-            features = np.concatenate(features)
-            save(fold, features, format, images, patch, output)
+                    i = Image(fname, patch_images)
+                    images.append(i)
+                features = np.concatenate(features)
+                save(idx, features, format, images, input, model, patch, output)
 
 
 @click.command()
@@ -117,9 +115,7 @@ def main(contrast: float, formats: list, folds: int, gpuid: int, height: int, in
     print('Format string for exemplos: %s ' % output)
     print('GPU ID: %d' % gpuid)
 
-    folds = list(range(1, folds + 1))
     patches = list(patches)
-
     extract_features(contrast, folds, formats, gpuid, height, input, model, orientation, output, patches, save_images, width)
 
 

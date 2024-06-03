@@ -24,7 +24,7 @@ def get_model(model, **kwargs):
     raise ValueError
 
 
-def get_input_shape(orientation: str, patch: int, spec_height: int, spec_width: int)-> Tuple:
+def get_input_shape(orientation: str, patch: int, spec_height: int, spec_width: int)-> tuple[int, int, int]:
     """
     Calcula o corte da imagem baseado na orientação.
     :param orientation: orientação do corte da imagem.
