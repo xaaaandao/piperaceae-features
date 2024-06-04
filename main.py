@@ -11,7 +11,7 @@ from typing import LiteralString
 from image import adjust_contrast, Image
 from model import get_model, get_input_shape
 from patch import next_patch
-from save import save
+from save import save, save_csv
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -19,13 +19,16 @@ dt_now = datetime.datetime.now()
 dt_now = dt_now.strftime('%d-%m-%Y-%H-%M-%S')
 
 
-def extract_features(contrast: float,
+def extract_features(color: str,
+                     contrast: float,
                      folds: int,
                      format: list,
                      gpuid: int,
                      height: int,
                      input: pathlib.Path | LiteralString | str,
+                     minimum: int,
                      model: str,
+                     name: str,
                      orientation: str,
                      output: pathlib.Path | LiteralString | str,
                      patches: int,
@@ -47,8 +50,6 @@ def extract_features(contrast: float,
     :param width: largura da imagem.
     """
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuid)
-    input_path_proto = os.path.join(input, 'f%d', '*.jpeg')
-    # output = os.path.join(output, dt_now)
     os.makedirs(output, exist_ok=True)
 
     for patch in patches:
@@ -60,7 +61,7 @@ def extract_features(contrast: float,
         model, preprocess_input = get_model(model, weights='imagenet', include_top=False,
                                             input_shape=input_shape, pooling='avg')
         n_features = 0
-        images=[]
+        images = []
         for idx, fold in enumerate(sorted(pathlib.Path(input).glob('*')), start=1):
             if fold.is_dir():
                 features = []
@@ -86,10 +87,13 @@ def extract_features(contrast: float,
                     i = Image(fname, patch_images)
                     images.append(i)
                 features = np.concatenate(features)
-                save(idx, features, format, images, input, model, patch, output)
+                save(features, idx, format, images, output, patch)
+                n_features = features.shape[1]
+        save_csv(color, contrast, idx, format, height, images, input, minimum, model, name, n_features, output, patch, width)
 
 
 @click.command()
+@click.option('-C', '--color', type=str, default='RGB')
 @click.option('-c', '--contrast', type=float, default=0.0)
 @click.option('--formats', type=click.Choice(['all', 'npy', 'npz']),
               required=True,
@@ -99,12 +103,16 @@ def extract_features(contrast: float,
 @click.option('-h', '--height', type=int, required=True)
 @click.option('-i', '--input', required=True)
 @click.option('-m', '--model', type=click.Choice(['mobilenetv2', 'vgg16', 'resnet50v2']), required=True)
+@click.option('--minimum', type=int, required=False)
+@click.option('-m', '--model', type=click.Choice(['mobilenetv2', 'vgg16', 'resnet50v2']), required=True)
+@click.option('-n', '--name', type=str, required=False)
 @click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True)
 @click.option('-o', '--output', default='output')
 @click.option('-p', '--patches', required=True, default=[1], multiple=True)
 @click.option('-s', '--save_images', is_flag=True)
 @click.option('-w', '--width', type=int, required=True)
-def main(contrast: float, formats: list, folds: int, gpuid: int, height: int, input, model, orientation, output,
+def main(color: str, contrast: float, formats: list, folds: int, gpuid: int, height: int, input, minimum, model, name,
+         orientation, output,
          patches: int, save_images: bool, width: int):
     print('Feature Extraction Parameters')
     print('Pre-trained model: %s' % model)
@@ -116,7 +124,9 @@ def main(contrast: float, formats: list, folds: int, gpuid: int, height: int, in
     print('GPU ID: %d' % gpuid)
 
     patches = list(patches)
-    extract_features(contrast, folds, formats, gpuid, height, input, model, orientation, output, patches, save_images, width)
+    extract_features(color, contrast, folds, formats, gpuid, height, input, minimum, model, name, orientation, output,
+                     patches,
+                     save_images, width)
 
 
 if __name__ == '__main__':

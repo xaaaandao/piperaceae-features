@@ -1,7 +1,6 @@
 
-Xpython:S14812"4Remove the unused local variable "input_path_proto".(ÖÍãÎùÿÿÿÿ8€èıËı1
-Rpython:S1481>".Remove the unused local variable "n_features".(‘ÎÓîÿÿÿÿÿ8€èıËı1
-spython:S3776"TRefactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.(º½îå8Õ¯Èòı1
-=python:S1253"Remove this commented out code.(ô‹ÃÃ8¶‹®Ğı1
-†python:S58646"gReplace this expression; Previous type checks suggest that "patches" has type "int" and isn't iterable.(¨ñ¾8€èıËı1
-ipython:S5655w"JChange this argument; Function "extract_features" expects a different type(Ôª¬¬8èıËı1
+upython:S107"WFunction "extract_features" has 15 parameters, which is greater than the 13 authorized.(€˜¶í8Ì¥î„ş1
+spython:S3776"TRefactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.(€˜¶í8ßŒç„ş1
+†python:S58647"gReplace this expression; Previous type checks suggest that "patches" has type "int" and isn't iterable.(¨ñ¾8ßŒç„ş1
+ipython:S107r"KFunction "main" has 15 parameters, which is greater than the 13 authorized.(½ïé‡8”Üî„ş1
+opython:S5655€"JChange this argument; Function "extract_features" expects a different type(—Ò–³şÿÿÿÿ8¶ûî„ş1

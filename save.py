@@ -1,6 +1,6 @@
 import os
 import pathlib
-from typing import LiteralString
+from typing import LiteralString, overload
 
 import numpy as np
 import pandas as pd
@@ -38,7 +38,7 @@ def save_npz(features: np.ndarray, fold: int, patch: int, output: pathlib.Path |
     np.savez_compressed(filename, x=features, y=np.repeat(fold, features.shape[0]))
 
 
-def save_features(fold: int, features, format: str, patch: int, output: pathlib.Path | LiteralString | str) -> None:
+def save_features(features, fold: int, format: str, patch: int, output: pathlib.Path | LiteralString | str) -> None:
     """
     Chama a função para salvar as features, baseado na opção que foi escolhida pelo usuário.
     :param fold: a classe que pertence aquelas features.
@@ -82,11 +82,18 @@ def save_images(fold: int, images: list, output: pathlib.Path | LiteralString | 
     for image in images:
         image.save_patches(p)
 
-
-def save_csv(fold: int, features: np.ndarray, images: list,
-             input: pathlib.Path | LiteralString | str,
-             model: str, output: pathlib.Path | LiteralString | str,
-             patch: int):
+# save_csv(color, contrast, fold, height, images, input, minimum, model, name, n_features, output, patch, width)
+def save_csv(color:str, contrast: str,
+             fold: int,
+             format: int,
+             height: int,
+             images: list,
+             input:  pathlib.Path | LiteralString | str,
+             minimum: int, model: str,
+             name: str,
+             n_features: int,
+             output: pathlib.Path | LiteralString | str, patch: int,
+             width: int):
     """
     Gera dois arquivos CSV:
     1- Salva as informações do dataset.
@@ -98,12 +105,20 @@ def save_csv(fold: int, features: np.ndarray, images: list,
     :param output: local onde será salvo as imagens.
     :param patch: quantidade de divisões feitas nas imagens.
     """
-    save_dataset(fold, features, images, model, output, patch)
+    save_dataset(color, contrast, fold, format, height, images, minimum, model, name, n_features, output, patch, width)
     save_samples(images, input, output)
 
 
-def save_dataset(fold: int, features: np.ndarray, images: list, model: str, output: pathlib.Path | LiteralString | str,
-                 patch: int):
+def save_dataset(color:str, contrast: str,
+                 fold: int,
+                 format: str,
+                 height: int,
+                 images: list,
+                 minimum: int, model: str,
+                 name: str,
+                 n_features:int,
+                 output: pathlib.Path | LiteralString | str, patch: int,
+                 width: int):
     """
     Salva as informações do dataset.
     :param fold:  a classe que pertence aquelas imagens.
@@ -112,29 +127,35 @@ def save_dataset(fold: int, features: np.ndarray, images: list, model: str, outp
     :param patch: quantidade de divisões feitas nas imagens.
     :param output: local onde será salvo as imagens.
     """
-    n_samples = features.shape[0]
-    n_features = features.shape[1]
+
     data = {
+        'color': [color],
+        'contrast': [contrast],
         'fold': [fold],
-        'patches': [patch],
+        'format': [format],
+        'height': [height],
+        'patch': [patch],
         'features': [n_features],
         'samples': [len(images)],
-        'model': model.name,
+        'model': [model.name],
+        'name': [name],
+        'minimum': [minimum],
         'samples+patch': np.sum([len(image.patches) for image in images]),
+        'width': [width],
     }
     df = pd.DataFrame(data, columns=list(data.keys()))
     filename = os.path.join(output, 'dataset.csv')
     df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
 
 
-def get_label(input: pathlib.Path | LiteralString | str, value:int) -> str:
+def get_label(input: pathlib.Path | LiteralString | str, value: int) -> str:
     df = pd.read_csv(os.path.join(input, 'input.csv'), sep=';', header=0, index_col=None, engine='c', low_memory=False)
     df['output'] = df['output'].apply(lambda x: x.replace('f', ''))
     df['output'] = df['output'].astype('int64')
     return df[df['output'] == value]['input'].values[0]
 
 
-def save_samples(images: list, input: pathlib.Path | LiteralString | str, output: pathlib.Path | LiteralString | str,):
+def save_samples(images: list, input: pathlib.Path | LiteralString | str, output: pathlib.Path | LiteralString | str, ):
     """
     Salva as informações das amostras que foram extraídas as características.
     :param fold:  a classe que pertence aquelas imagens.
@@ -150,10 +171,9 @@ def save_samples(images: list, input: pathlib.Path | LiteralString | str, output
     filename = os.path.join(output, 'samples.csv')
     df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
 
-
-def save(fold: int, features: np.ndarray, format: str, images: list,
-         input: pathlib.Path | LiteralString | str, model: str,
-         patch: int, output: pathlib.Path | LiteralString | str) -> None:
+def save(features: np.ndarray, fold: int, format: str,
+         images: list,
+         output: pathlib.Path | LiteralString | str, patch: int) -> None:
     """
     Chama as funções que salvam as features, as imagens e as informações da extração.
     :param fold: a classe que pertence aquelas imagens.
@@ -163,9 +183,13 @@ def save(fold: int, features: np.ndarray, format: str, images: list,
     :param patch: quantidade de divisões feitas nas imagens.
     :param output:  local onde serão salvos as imagens e as features.
     """
-    save_features(fold, features, format, patch, output)
+    save_features(features, fold, format, patch, output)
     save_images(fold, images, output)
-    save_csv(fold, features, images, input, model, output, patch)
+
+# def save(color:str, contrast:float, height:int, fold:int, minimum:int, model:str, name:str,
+#          output: pathlib.Path | LiteralString | str,
+#          patch:int, width:int):
+#     save_csv(color, contrast, fold, height, minimum, model, name, output, patch, width)
 
 # def save(descriptor: str, features: np.ndarray, images: list, output: pathlib.Path | LiteralString | str) -> None:
 #     save_features(descriptor, features, output)
