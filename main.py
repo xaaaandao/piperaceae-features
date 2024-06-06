@@ -62,6 +62,7 @@ def extract_features(color: str,
                                             input_shape=input_shape, pooling='avg')
         n_features = 0
         images = []
+        last_idx = 0
         for idx, fold in enumerate(sorted(pathlib.Path(input).glob('*')), start=1):
             if fold.is_dir():
                 features = []
@@ -89,7 +90,8 @@ def extract_features(color: str,
                 features = np.concatenate(features)
                 save(features, idx, format, images, output, patch)
                 n_features = features.shape[1]
-        save_csv(color, contrast, idx, format, height, images, input, minimum, model, name, n_features, output, patch, width)
+                last_idx = idx
+        save_csv(color, contrast, last_idx, format, height, images, input, minimum, model, name, n_features, output, patch, width)
 
 
 @click.command()
