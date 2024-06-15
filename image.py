@@ -44,7 +44,7 @@ class Image:
     def print(self):
         print(self.filename, self.extension, self.path, sep='\n')
 
-    def save_patches(self, output: pathlib.Path | LiteralString | str) -> None:
+    def save(self, output: pathlib.Path | LiteralString | str) -> None:
         """
         Salva as divisões (ou patches) das imagens.
         :param output: local onde serão salvos os patches.
@@ -59,4 +59,5 @@ class Image:
         for i, patch in enumerate(self.patches, start=1):
             output_filename = self.filename + '-' + str(i) + self.extension
             output_filename = os.path.join(p, output_filename)
-            tf.keras.preprocessing.image.save_img(output_filename, patch)
+            if not os.path.exists(output_filename):
+                tf.keras.preprocessing.image.save_img(output_filename, patch)

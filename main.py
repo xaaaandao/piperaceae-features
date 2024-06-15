@@ -1,6 +1,5 @@
 import click
 import datetime
-import glob
 import numpy as np
 import os
 import pathlib
@@ -11,9 +10,9 @@ from typing import LiteralString
 from image import adjust_contrast, Image
 from model import get_model, get_input_shape
 from patch import next_patch
-from save import save, save_csv
+from save import save, save_csv, save_patches
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 dt_now = datetime.datetime.now()
 dt_now = dt_now.strftime('%d-%m-%Y-%H-%M-%S')
@@ -52,6 +51,7 @@ def extract_features(color: str,
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuid)
     os.makedirs(output, exist_ok=True)
 
+    images = []
     for patch in patches:
         print('Slicing patch_images into %d non-overlapping patches...' % (patch))
         tf.keras.backend.clear_session()
@@ -61,7 +61,6 @@ def extract_features(color: str,
         model, preprocess_input = get_model(model, weights='imagenet', include_top=False,
                                             input_shape=input_shape, pooling='avg')
         n_features = 0
-        images = []
         last_idx = 0
         for idx, fold in enumerate(sorted(pathlib.Path(input).glob('*')), start=1):
             if fold.is_dir():
@@ -88,10 +87,15 @@ def extract_features(color: str,
                     i = Image(fname, patch_images)
                     images.append(i)
                 features = np.concatenate(features)
-                save(features, idx, format, images, output, patch)
+                save(features, idx, format, model.name, output, patch)
                 n_features = features.shape[1]
                 last_idx = idx
-        save_csv(color, contrast, last_idx, format, height, images, input, minimum, model, name, n_features, output, patch, width)
+                break
+        save_csv(color, contrast, last_idx, format, height, images, input, minimum, model.name, name, n_features, output, patch, width)
+
+        import sys
+        sys.exit(1)
+    save_patches(images, output)
 
 
 @click.command()

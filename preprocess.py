@@ -26,7 +26,6 @@ def main(input, output, zfill):
     if not os.path.exists(input):
         raise FileNotFoundError(input)
 
-    # output = os.path.join(output, dt_now)
     os.makedirs(output, exist_ok=True)
 
     dirs = list()
