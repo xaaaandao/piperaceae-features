@@ -57,7 +57,7 @@ def extract_features(color: str,
         tf.keras.backend.clear_session()
 
         input_shape = get_input_shape(orientation, patch, height, width)
-
+        model_name = model
         model, preprocess_input = get_model(model, weights='imagenet', include_top=False,
                                             input_shape=input_shape, pooling='avg')
         n_features = 0
@@ -87,14 +87,10 @@ def extract_features(color: str,
                     i = Image(fname, patch_images)
                     images.append(i)
                 features = np.concatenate(features)
-                save(features, idx, format, model.name, output, patch)
+                save(features, idx, format, model_name, output, patch)
                 n_features = features.shape[1]
                 last_idx = idx
-                break
-        save_csv(color, contrast, last_idx, format, height, images, input, minimum, model.name, name, n_features, output, patch, width)
-
-        import sys
-        sys.exit(1)
+        save_csv(color, contrast, last_idx, format, height, images, input, minimum, model_name, name, n_features, output, patch, width)
     save_patches(images, output)
 
 
