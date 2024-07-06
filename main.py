@@ -31,6 +31,7 @@ def extract_features(color: str,
                      orientation: str,
                      output: pathlib.Path | LiteralString | str,
                      patches: int,
+                     regions: str,
                      save_images: bool,
                      width: int):
     """
@@ -90,7 +91,7 @@ def extract_features(color: str,
                 save(features, idx, format, model_name, output, patch)
                 n_features = features.shape[1]
                 last_idx = idx
-        save_csv(color, contrast, last_idx, format, height, images, input, minimum, model_name, name, n_features, output, patch, width)
+        save_csv(color, contrast, last_idx, format, height, images, input, minimum, model_name, name, n_features, output, patch, regions, width)
     save_patches(images, output)
 
 
@@ -111,11 +112,12 @@ def extract_features(color: str,
 @click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True)
 @click.option('-o', '--output', default='output')
 @click.option('-p', '--patches', required=True, default=[1], multiple=True)
+@click.option('-r', '--regions', required=False, type=str)
 @click.option('-s', '--save_images', is_flag=True)
 @click.option('-w', '--width', type=int, required=True)
 def main(color: str, contrast: float, formats: list, folds: int, gpuid: int, height: int, input, minimum, model, name,
          orientation, output,
-         patches: int, save_images: bool, width: int):
+         patches: int, regions:str, save_images: bool, width: int):
     print('Feature Extraction Parameters')
     print('Pre-trained model: %s' % model)
     print('Non-overlapping patches per image: %s' % str(patches))
@@ -127,7 +129,7 @@ def main(color: str, contrast: float, formats: list, folds: int, gpuid: int, hei
 
     patches = list(patches)
     extract_features(color, contrast, folds, formats, gpuid, height, input, minimum, model, name, orientation, output,
-                     patches,
+                     patches, regions,
                      save_images, width)
 
 

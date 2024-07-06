@@ -91,7 +91,9 @@ def save_csv(color:str, contrast: str,
              minimum: int, model: str,
              name: str,
              n_features: int,
-             output: pathlib.Path | LiteralString | str, patch: int,
+             output: pathlib.Path | LiteralString | str,
+             patch: int,
+             regions: str,
              width: int):
     """
     Gera dois arquivos CSV:
@@ -104,7 +106,7 @@ def save_csv(color:str, contrast: str,
     :param output: local onde será salvo as imagens.
     :param patch: quantidade de divisões feitas nas imagens.
     """
-    save_dataset(color, contrast, fold, format, height, images, minimum, model, name, n_features, output, patch, width)
+    save_dataset(color, contrast, fold, format, height, images, minimum, model, name, n_features, output, patch, regions, width)
     save_samples(images, input, model, output)
 
 
@@ -116,7 +118,9 @@ def save_dataset(color:str, contrast: str,
                  minimum: int, model: str,
                  name: str,
                  n_features:int,
-                 output: pathlib.Path | LiteralString | str, patch: int,
+                 output: pathlib.Path | LiteralString | str,
+                 patch: int,
+                 regions: str,
                  width: int):
     """
     Salva as informações do dataset.
@@ -139,11 +143,12 @@ def save_dataset(color:str, contrast: str,
         'model': [model],
         'name': [name],
         'minimum': [minimum],
+        'regions': [regions],
         'count_samples+patch': np.sum([len(image.patches) for image in images]),
         'width': [width],
     }
     df = pd.DataFrame(data, columns=list(data.keys()))
-    filename = os.path.join(output, model, 'dataset.csv')
+    filename = os.path.join(output, model, 'features', 'dataset.csv')
     df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
 
 
@@ -167,7 +172,7 @@ def save_samples(images: list, input: pathlib.Path | LiteralString | str, model:
             'fold': [image.fold for image in sorted(images, key=lambda x: x.filename)],
             'specific_epithet': [get_label(input, image.fold) for image in sorted(images, key=lambda x: x.filename)]}
     df = pd.DataFrame(data, columns=list(data.keys()))
-    filename = os.path.join(output, model, 'samples.csv')
+    filename = os.path.join(output, model, 'features', 'samples.csv')
     df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
 
 def save(features: np.ndarray, fold: int, format: str, model:str,
