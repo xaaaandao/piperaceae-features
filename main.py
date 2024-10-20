@@ -118,6 +118,9 @@ def extract_features(color: str,
 def main(color: str, contrast: float, formats: list, folds: int, gpuid: int, height: int, input, minimum, model, name,
          orientation, output,
          patches: int, regions:str, save_images: bool, width: int):
+    if 'GRAYSCALE'.lower() in input.lower():
+        color = 'GRAYSCALE'
+
     print('Feature Extraction Parameters')
     print('Pre-trained model: %s' % model)
     print('Non-overlapping patches per image: %s' % str(patches))
