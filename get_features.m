@@ -6,7 +6,7 @@ function output = format_time(descriptor, output)
     dt_now = string(datetime);
     dt_now = strrep(dt_now, ":", "-");
     dt_now = strrep(dt_now, " ", "+");
-    output = fullfile(output, dt_now, descriptor);
+    output = fullfile(output, descriptor);
 end
 
 function label = get_label(foldername)
@@ -36,50 +36,58 @@ function extract_features(descriptor, input, output)
     dirs = dir([input, '/**/*.jpeg']);
     labels = [];
     images = [];
+    features = [];
     
     for i=1:height(dirs)
         label = dirs(i).folder;
-        label = get_label(label);
+        label = [get_label(label)];
 
         filename = fullfile(dirs(i).folder, dirs(i).name);
         image = imread(filename);
-
+        image = rgb2gray(image); % Convert to grayscale
+    
+        fprintf("%s\n", filename);
         switch descriptor
             case "lbp"
-                features = lbp(image);
+                feature = lbp(image);
             case "surf"
-                features = surf(image, 64);
+                feature = surf(image, 64);
             otherwise
                 error("descriptor invalid");
         end
-        % labels(end+1) = label;
-        labels = [labels;string(label)];
-        images = [images;filename];
+        feature(end+1) = label;
+        features = [features; feature]; % Concatenate rows for each iteration
+        labels = [labels; label];
+        images = [images; string(filename)];
     end
-    save(descriptor, features, images, string(label), labels, output);
+    save(descriptor, features, images, labels, output);
 end
 
 function save_dataset(descriptor, features, images, labels, output)
-% SAVE_DATASET Salva as informações do dataset.
-%   save_dataset(descriptor, features, images, label, labels, output) 
-% salva informações do dataset.
-    n_features = size(features);
-    n_images = size(images);
-    fold = max(labels);
-    data = [descriptor, fold, string(n_images(1)), string(n_features(2)), string(1)];
-    T = array2table(data, VariableNames={'descriptor','fold','labels','features','patches'});
+    % SAVE_DATASET Salva as informações do dataset.
+    n_features = size(features, 2); % Número de colunas de features
+    n_images = numel(images); % Número total de imagens
+    fold = max(labels); % Número máximo de labels (supõe classes sequenciais)
+    patches = 1; % Valor padrão (ajustável)
+
+    % Criação de uma única linha na tabela
+    T = table({descriptor}, fold, n_images, n_features, patches, ...
+              'VariableNames', {'descriptor', 'fold', 'images', 'features', 'patches'});
+
+    % Salva a tabela como arquivo CSV
     filename = fullfile(output, "dataset.csv");
-    writetable(T, filename,"Delimiter",";","QuoteStrings","all");
+    writetable(T, filename, "Delimiter", ";", "QuoteStrings", true);
 end
 
-function save(descriptor, features, images, label, labels, output)
+
+function save(descriptor, features, images, labels, output)
 % SAVE Salva as características extraídas e outras informações em
 % arquivos CSV.
 %   save(descriptor, features, images, label, labels, output) invoca
 % as demais funções que realizam o salvamento das características e
 % outras informações.
     save_samples(images, labels, output);
-    save_features(descriptor, features, label, output);
+    save_features(descriptor, features, output);
     save_dataset(descriptor, features, images, labels, output);
 end
 
@@ -93,22 +101,24 @@ function save_samples(images, labels, output)
     writetable(T, filename,"Delimiter",";","QuoteStrings","all");
 end
 
-function save_features(descriptor, features, label, output)
+function save_features(descriptor, features, output)
 % SAVE_FEATURES Salva as características extraídas em um arquivo .txt
 %   save_features(descriptor, feature, label, output) produz um arquivo TXT com
 % as características extraídas.
     filename = fullfile(output, string(strjoin([descriptor, ".txt"], "")));
     % a = append
-    file = fopen(filename, "a");
-    for i=1:length(features)
-        fprintf(file, "%s ", num2str(features(i)));
+    file = fopen(filename, "w");
+    
+    for i = 1:length(features)
+        fprintf(file, "%s\n", num2str(features(i,:)));
     end
-    fprintf(file, "%s \n", string(label));
+    fprintf("file: %s\n", filename);
+    
     fclose(file);
 end
 
 
-function feature = lbp(image)
+function [feature] = lbp(image)
 % LBP Extrai as características das imagens usando o Local Binary Pattern.
 %   lbp(image) extrai as características de uma imagem usando LBP.
     lbpFeatures = extractLBPFeatures(image);
@@ -141,19 +151,20 @@ function [featVector] = surf(image, SURFSize)
     % Obliquidade
     vetorAux = skewness(histograma, 0, 1);
     obliq =  vetorAux(1:size(vetorAux, 2));
-    if anynan(obliq) == 1
-        fprintf("%s\n", filename);
-    end
 
     % Curtose
     vetorAux = kurtosis(histograma, 0, 1);
     curt = vetorAux(1:size(vetorAux, 2));
-    if anynan(curt) == 1
-         fprintf("%s\n", filename);
-    end   
 
     featVector = [vHist, media, desvPad, obliq, curt];
 end
 
-
-extract_features('lbp', './test/dataset/GRAYSCALE', 'a');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/256/original', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/256');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/400/original', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/400');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/512/original', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/512');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/256/original', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/256');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/400/original', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/400');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/512/original', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/512');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/256/original', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/256');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/400/original', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/400');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/512/original/', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/512'); 
