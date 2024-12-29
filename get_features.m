@@ -20,7 +20,7 @@ function label = get_label(foldername)
     label = str2num(label);
 end
 
-function extract_features(descriptor, input, output)
+function extract_features(descriptor, input, minimum, name, output)
 % EXTRACT_FEATURES Extrai as features das imagens presentes no diretório
 % que foi passado por input. As features são salvas no diretório de output.
 %   extract_features(descriptor, input, output) produz arquivos com as
@@ -44,14 +44,21 @@ function extract_features(descriptor, input, output)
 
         filename = fullfile(dirs(i).folder, dirs(i).name);
         image = imread(filename);
+        % 
+        % [h, w] = size(image);
+        w = size(image, 1);
+        h = size(image, 2);
+
         image = rgb2gray(image); % Convert to grayscale
-    
-        fprintf("%s\n", filename);
+        % imadjust(image); % Adjust contrast
+
+
+        % fprintf("%s\n", filename);
         switch descriptor
             case "lbp"
                 feature = lbp(image);
             case "surf"
-                feature = surf(image, 64);
+                feature = surf(image, 128);
             otherwise
                 error("descriptor invalid");
         end
@@ -60,19 +67,23 @@ function extract_features(descriptor, input, output)
         labels = [labels; label];
         images = [images; string(filename)];
     end
-    save(descriptor, features, images, labels, output);
+    save(descriptor, features, h, images, labels, minimum, name, output, w);
 end
 
-function save_dataset(descriptor, features, images, labels, output)
+function save_dataset(descriptor, features, height, images, labels, ...
+    minimum, name, output, width)
     % SAVE_DATASET Salva as informações do dataset.
     n_features = size(features, 2); % Número de colunas de features
     n_images = numel(images); % Número total de imagens
     fold = max(labels); % Número máximo de labels (supõe classes sequenciais)
     patches = 1; % Valor padrão (ajustável)
 
-    % Criação de uma única linha na tabela
-    T = table({descriptor}, fold, n_images, n_features, patches, ...
-              'VariableNames', {'descriptor', 'fold', 'images', 'features', 'patches'});
+    % model = descritpor
+   T = table({'GRAYSCALE'}, 1.2, fold, {'txt'}, height, patches, n_features, n_images, ...
+              {descriptor}, {name}, minimum, width, n_images, ...
+              'VariableNames', {'color', 'contrast', 'fold', 'format', 'height', ...
+                                'patch', 'count_features', 'count_samples', 'model', ...
+                                'name', 'minimum', 'width', 'count_samples_patch'});
 
     % Salva a tabela como arquivo CSV
     filename = fullfile(output, "dataset.csv");
@@ -80,7 +91,7 @@ function save_dataset(descriptor, features, images, labels, output)
 end
 
 
-function save(descriptor, features, images, labels, output)
+function save(descriptor, features, h, images, labels, minimum, name, output, w)
 % SAVE Salva as características extraídas e outras informações em
 % arquivos CSV.
 %   save(descriptor, features, images, label, labels, output) invoca
@@ -88,17 +99,18 @@ function save(descriptor, features, images, labels, output)
 % outras informações.
     save_samples(images, labels, output);
     save_features(descriptor, features, output);
-    save_dataset(descriptor, features, images, labels, output);
+    save_dataset(descriptor, features, h, images, labels, ...
+    minimum, name, output, w);
 end
 
-function save_samples(images, labels, output)
+function save_samples(filename, labels, output)
 % SAVE_SAMPLES Salva as amostras que tiveram suas características
 % extraídas e as labels (classes ou folds) que essa imagens pertencem.
 %   save_samples(images, labels, output) produz um arquivo CSV com
 % as amostras utilizadas.
-    T = table(images, labels);
-    filename = fullfile(output, "samples.csv");
-    writetable(T, filename,"Delimiter",";","QuoteStrings","all");
+    T = table(filename, labels, labels,   'VariableNames', {'filename', 'fold', 'specific_epithet'});
+    fname = fullfile(output, "samples.csv");
+    writetable(T, fname,"Delimiter",";","QuoteStrings","all");
 end
 
 function save_features(descriptor, features, output)
@@ -135,7 +147,7 @@ function [featVector] = surf(image, SURFSize)
 %   SURF(image, SURFSize) extrai as características de uma imagem usando SURF.    
     points = detectSURFFeatures( image );
     [histograma, valid_points] = extractFeatures(image, points, "SURFSize", SURFSize); 
-    
+    histograma(isnan(histograma)) = 0;
                             
     % escreve QTDE. DESCRITORES na tela
     vHist =  size(histograma, 1);
@@ -151,20 +163,29 @@ function [featVector] = surf(image, SURFSize)
     % Obliquidade
     vetorAux = skewness(histograma, 0, 1);
     obliq =  vetorAux(1:size(vetorAux, 2));
+    if isnan(obliq) == 1
+        fprintf("%d\n", points.Count);
+        fprintf("ruim\n");
+        % pause;
+    end
 
     % Curtose
     vetorAux = kurtosis(histograma, 0, 1);
     curt = vetorAux(1:size(vetorAux, 2));
+    if isnan(curt) == 1
+        fprintf("ruim\n");
+        % pause;
+    end
 
     featVector = [vHist, media, desvPad, obliq, curt];
 end
 
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/256/original', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/256');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/400/original', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/400');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/512/original', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/512');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/256/original', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/256');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/400/original', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/400');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/512/original', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/512');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/256/original', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/256');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/400/original', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/400');
-extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/512/original/', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/512'); 
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/256/original', 5, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/256');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/400/original', 5, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/400');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+5/RGB/512/original', 5, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+5/GRAYSCALE/512');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/256/original', 10, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/256');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/400/original', 10, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/400');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+10/RGB/512/original', 10, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+10/GRAYSCALE/512');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/256/original', 20, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/256');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/400/original', 20, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/400');
+extract_features('surf', '/home/xandao/Documentos/pr_dataset+20/RGB/512/original/', 20, 'pr_dataset', '/home/xandao/Documentos/pr_dataset+20/GRAYSCALE/512'); 

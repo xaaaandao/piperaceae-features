@@ -1,4 +1,3 @@
-
 import click
 import cv2 as cv
 import cv2.xfeatures2d
@@ -10,10 +9,10 @@ import PIL
 import scipy.stats
 from skimage.feature import local_binary_pattern
 import tensorflow as tf
-from typing import LiteralString
+# from typing import LiteralString
 
-from image import Image, adjust_contrast
-from save import save
+from image import Image
+# from save import save
 
 
 def lbp(image: PIL.Image, label: int) -> np.ndarray:
@@ -48,7 +47,7 @@ def surf64(image: PIL.Image, label: int) -> np.ndarray:
     :param label: classe que pertence aquela imagem.
     :return: np.ndarray: matriz com as features extraídas da imagem.
     """
-    surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000)
+    surf = cv2.xfeatures2d.SURF_create()
     kp, histograma = surf.detectAndCompute(image, None)
 
     if not len(histograma.shape) == 2:
@@ -73,87 +72,100 @@ def surf64(image: PIL.Image, label: int) -> np.ndarray:
 
     features = np.concatenate((v_hist, mean, desv_pad, kurtosis, skew, label))
 
+    if np.isnan(features).any():
+        raise ValueError('contains nan')
+    
     # -1 to label
     return features
 
 
-def extract_features(contrast: float,
-                     descriptor: str,
-                     folds: int,
-                     format: list,
-                     gpuid: int,
-                     height: int,
-                     input: pathlib.Path | LiteralString | str,
-                     orientation: str,
-                     output: pathlib.Path | LiteralString | str,
-                     patches: int,
-                     save_images: bool,
-                     width: int):
+# model = descriptor
+def save_dataset(descriptor, features, height, images, minimum, mode, name, output, width, format='txt', patch=1, regions=None):
+    data = {
+        'color': [mode],
+        'fold': [np.max(features[:, -1])],
+        'format': [format],
+        'height': [height],
+        'patch': [patch],
+        'count_features': [features[0].shape[0]-1],
+        'count_samples': [len(images)],
+        'model': [descriptor],
+        'name': [name],
+        'minimum': [minimum],
+        'regions': [regions],
+        'count_samples+patch': [len(images)/patch],
+        'width': [width],
+    }
+    df = pd.DataFrame(data, columns=list(data.keys()))
+    filename = os.path.join(output, 'dataset.csv')
+    df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
+    print(f'saving {filename}')
+
+def save_samples(descriptor, images, output):
+    data = {'filename': [image.filename for image in sorted(images, key=lambda x: x.filename)],
+            'fold': [image.fold for image in sorted(images, key=lambda x: x.filename)],
+            'specific_epithet': [image.fold for image in sorted(images, key=lambda x: x.filename)]}
+    df = pd.DataFrame(data, columns=list(data.keys()))
+    filename = os.path.join(output, 'samples.csv')
+    df.to_csv(filename, sep=';', quoting=2, quotechar='"', encoding='utf-8', index=False, header=True)
+
+def save_features(descriptor, features, output):
+    filename = os.path.join(output, '%s.txt' % descriptor)
+    np.savetxt(filename, features)
+    print(f'saving {filename}')
+
+def save(descriptor, features, height, images, minimum, mode, name, output, width):
+    output = os.path.join(output, descriptor)
+    os.makedirs(output, exist_ok=True)
+    save_dataset(descriptor, features, height, images, minimum, mode, name, output, width)
+    save_samples(descriptor, images, output)
+    save_features(descriptor, features, output)
+
+def extract_features(descriptor, input, minimum, name, output):                    
     """
     Extrai as features das imagens presentes no diretório passado por parâmetro.
-    :param contrast: valor do contraste a ser aplicado na imagem.
     :param descriptor: nome do descritor a ser utilizado.
-    :param folds: número de folds (ou número de classes).
-    :param gpuid: número da GPU.
-    :param height: altura da imagem.
     :param input: diretório de entrada das imagens.
-    :param model: modelo que será utilizado para extrair as features.
-    :param orientation: orientação da divisão da imagem (horizontal, vertical ou ambas as direções).
     :param output: diretóiro de saída.
-    :param patches: número de patches (divisões) na imagem/.
-    :param width: largura da imagem.
     :return:
     """
     features = []
     images = []
-    for image in list(sorted(pathlib.Path(input).rglob('*.jpeg'))):
-        im = PIL.Image.open(image.resolve())
+    
+    for p in list(sorted(pathlib.Path(input).rglob('*.jpeg'))):
+        print(p)
+        image = PIL.Image.open(p.resolve())
+        height = image.height
+        width = image.width
+        mode = 'GRAYSCALE' if 'L' in image.mode else 'RGB'
+        image = np.asarray(image)
+        
+        fold = p.parent.name.replace('f', '')
+        try:
+            fold.isnumeric()
+        except:
+            raise ValueError
 
-        if contrast > 0:
-            im = np.array(adjust_contrast(contrast, im))
+        i = Image(str(p), fold, p.parent.name)
+        images.append(i)
 
-        img = Image(image, list(im))
-
-        if save_images:
-            img.save_patches(output)
-
-        images.append(img)
         match descriptor:
             case 'lbp':
-                features.append(lbp(im, img.fold))
+                features.append(lbp(image, i.fold))
             case 'surf':
-                features.append(surf64(im, img.fold))
+                features.append(surf64(image, i.fold))
 
-    save(descriptor, features, images, output)
+    features = np.array(features)
+    save(descriptor, features, height, images, minimum, mode, name, output, width)
 
-
-@click.command()
-@click.option('-c', '--contrast', type=float, default=0.0)
-@click.option('-d', '--descriptor', type=click.Choice(['surf', 'lbp']), required=True)
-@click.option('--formats', type=click.Choice(['all', 'npy', 'npz']),
-              required=True,
-              help='all: create features file in two format, npy: create features in npy format and npz: create features in npz format;')
-# @click.option('-f', '--folds', type=int)
-# @click.option('--gpuid', type=int, default=0)
-# @click.option('-h', '--height', type=int, required=True)
-@click.option('-i', '--input', required=True)
-# @click.option('--orientation', type=click.Choice(['horizontal', 'vertical', 'horizontal+vertical']), required=True)
-@click.option('-o', '--output', default='output')
-# @click.option('-p', '--patches', required=True, default=[1], multiple=True)
-@click.option('-s', '--save_images', is_flag=True)
-# @click.option('-w', '--width', type=int, required=True)
-def main(contrast: float, formats: list, folds: int, gpuid: int, height: int, input, model, orientation, output,
-         patches: int, save_images: bool, width: int):
-    print('Feature Extraction Parameters')
-    print('Pre-trained model: %s' % model)
-    print('Non-overlapping patches per image: %s' % str(patches))
-    print('Folds: %s' % str(folds))
-    print('Image Dimensions h=%s, w=%s ' % (height, width))
-    print('Format string for input: %s ' % input)
-    print('Format string for exemplos: %s ' % output)
-    print('GPU ID: %d' % gpuid)
-
-    extract_features(contrast, folds, formats, gpuid, height, input, model, orientation, output, patches, save_images, width)
+def main():
+    # print(input)
+    for m in [5, 10, 20]:
+        for s in [256, 400, 512]:
+            input = f'/home/xandao/Documentos/pr_dataset+{m}/GRAYSCALE/{s}/original'
+            output = f'/home/xandao/Documentos/pr_dataset+{m}/GRAYSCALE/{s}/'
+            extract_features('lbp', input, m, 'pr_dataset', output)
+            extract_features('surf', input, m, 'pr_dataset', output)
 
 
 if __name__ == '__main__':
