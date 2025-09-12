@@ -66,7 +66,10 @@ def main(gpuid: int, height: int, input, model,
                         p = np.expand_dims(p, axis=0)
 
                         # Armazena na lista as features extraídas
-                        features.append(model.predict(p))
+                        features_predict = model.predict(p)
+                        features_predict = np.concatenate((features_predict, np.array([[idx]])), axis=1)
+                        features_predict = np.concatenate((features_predict, np.array([[filename.stem]])), axis=1)
+                        features.append(features_predict)
 
                     i = Image(filename, fold, patch_images)
                     images.append(i)

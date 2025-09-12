@@ -7,7 +7,7 @@ from typing import LiteralString
 
 @dataclasses.dataclass
 class Image:
-    filename : str | pathlib.Path | LiteralString
+    filename : pathlib.Path
     fold : int
     patches: list
 
