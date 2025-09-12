@@ -15,7 +15,7 @@
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
-    <option name="PARAMETERS" value="-i ./test/dataset/ -w 256 -h 256 -p 3 -m vgg16 -f 3 -s --formats all --orientation horizontal" />
+    <option name="PARAMETERS" value="-i $PROJECT_DIR$/../test/RGB/specific_epithet_trusted/512/5/ -w 512 -h 512 -p 3 -m vgg16 -s --orientation horizontal" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />
