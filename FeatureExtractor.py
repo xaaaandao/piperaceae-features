@@ -16,28 +16,28 @@ else:
 
 
 def load_models(modelo):
-    if modelo == 'ViT_huge':
+    if modelo == 'vit_huge':
         vit_huge_model = ViTModel.from_pretrained('google/vit-huge-patch14-224-in21k').to(device)
         vit_huge_feature_extractor = ViTImageProcessor.from_pretrained('google/vit-huge-patch14-224-in21k')
         vit_huge_model.eval()
 
         return vit_huge_model, vit_huge_feature_extractor
 
-    if modelo == 'ViT_large':
+    if modelo == 'vit_large':
         vit_large_model = ViTModel.from_pretrained('google/vit-large-patch16-224-in21k').to(device)
         vit_large_feature_extractor = ViTImageProcessor.from_pretrained('google/vit-large-patch16-224-in21k')
         vit_large_model.eval()
 
         return vit_large_model, vit_large_feature_extractor
 
-    if modelo == 'ViT_base':
+    if modelo == 'vit_base':
         vit_base_model = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k').to(device)
         vit_base_feature_extractor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224-in21k')
         vit_base_model.eval()
 
         return vit_base_model, vit_base_feature_extractor
 
-    if modelo == 'ViT_small':
+    if modelo == 'vit_small':
         vit_small_model = AutoModel.from_pretrained('WinKawaks/vit-small-patch16-224').to(device)
         vit_small_feature_extractor = ViTImageProcessor.from_pretrained('WinKawaks/vit-small-patch16-224')
         vit_small_model.eval()
