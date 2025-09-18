@@ -31,6 +31,8 @@ class Dataset:
         self.input_dir = input_dir
         self.model = Model(model, self.gpuid)
         self.name = name
+        self.n_samples = 0
+        self.n_samples_patch = 0
         self.orientation = orientation
         self.patch = patch
         self.width = width
@@ -40,11 +42,11 @@ class Dataset:
 
     def save(self, output):
         data = {
-            "fold": [self.fold],
             "height": [self.height],
             "patch": [self.patch],
             "n_features": [self.n_features],
-            "n_samples": [self.n_samples],
+            "n_labels": [self.fold],
+            "n_samples": [self.n_samples_patch / self.patch],
             "n_samples+patch": [self.n_samples_patch],
             "model": [self.model.name],
             "name": [self.name],
@@ -60,8 +62,7 @@ class Dataset:
         self.fold = fold
         # -2, porque eu adicionei duas colunas (classe e nome do arquivo)
         self.n_features = features_shape[1] - 2
-        self.n_samples = features_shape[0] / patch
-        self.n_samples_patch = features_shape[0]
+        self.n_samples_patch = self.n_samples_patch + features_shape[0]
         self.patch = patch
 
     def save_patches(self, output):

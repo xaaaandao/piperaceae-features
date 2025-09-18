@@ -72,9 +72,7 @@ def main(color: str, gpuid: int, height: int, input, model,
             features_shape = features.shape
         dataset.update(features_shape, last_fold, patch)
         dataset.save(output)
-        break
 
-    print(save_images)
     dataset.save_patches(output)
     dataset.save_samples(input, output)
 
